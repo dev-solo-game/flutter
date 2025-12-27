@@ -142,6 +142,7 @@ class WindowingOwnerWin32 extends WindowingOwner {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
     required RegularWindowControllerDelegate delegate,
   }) {
     return RegularWindowControllerWin32(
@@ -150,6 +151,7 @@ class WindowingOwnerWin32 extends WindowingOwner {
       preferredSize: preferredSize,
       preferredConstraints: preferredConstraints,
       title: title,
+      parent: parent,
     );
   }
 
@@ -279,8 +281,10 @@ class RegularWindowControllerWin32 extends RegularWindowController {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
   }) : _owner = owner,
        _delegate = delegate,
+       _parent = parent,
        super.empty() {
     if (!isWindowingEnabled) {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
@@ -294,6 +298,12 @@ class RegularWindowControllerWin32 extends RegularWindowController {
       preferredSize,
       preferredConstraints,
       title,
+      parent != null
+          ? _Win32PlatformInterface.getWindowHandle(
+              WidgetsBinding.instance.platformDispatcher.engineId!,
+              parent.rootView.viewId,
+            )
+          : null,
     );
     if (viewId < 0) {
       throw Exception('Windows failed to create a regular window with a valid view id.');
@@ -307,6 +317,7 @@ class RegularWindowControllerWin32 extends RegularWindowController {
 
   final WindowingOwnerWin32 _owner;
   final RegularWindowControllerDelegate _delegate;
+  final BaseWindowController? _parent;
   late final _RegularWindowMesageHandler _handler;
   bool _destroyed = false;
 
@@ -736,6 +747,7 @@ class _Win32PlatformInterface {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    HWND? parent,
   ) {
     final ffi.Pointer<_RegularWindowCreationRequest> request =
         allocator<_RegularWindowCreationRequest>();
@@ -743,6 +755,7 @@ class _Win32PlatformInterface {
       request.ref.preferredSize.from(preferredSize);
       request.ref.preferredConstraints.from(preferredConstraints);
       request.ref.title = (title ?? 'Regular window').toNativeUtf16(allocator: allocator);
+      request.ref.parentOrNull = parent ?? ffi.Pointer<ffi.Void>.fromAddress(0);
       return _createRegularWindow(engineId, request);
     } finally {
       allocator.free(request);
@@ -923,6 +936,7 @@ final class _RegularWindowCreationRequest extends ffi.Struct {
   external _WindowSizeRequest preferredSize;
   external _WindowConstraintsRequest preferredConstraints;
   external ffi.Pointer<_Utf16> title;
+  external HWND parentOrNull;
 }
 
 /// Payload for the creation method used by [_Win32PlatformInterface.createDialogWindow].

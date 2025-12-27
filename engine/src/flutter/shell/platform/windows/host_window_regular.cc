@@ -11,7 +11,8 @@ HostWindowRegular::HostWindowRegular(WindowManager* window_manager,
                                      FlutterWindowsEngine* engine,
                                      const WindowSizeRequest& preferred_size,
                                      const BoxConstraints& constraints,
-                                     LPCWSTR title)
+                                     LPCWSTR title,
+                                     HWND parent)
 
     : HostWindow(window_manager,
                  engine,
@@ -21,7 +22,7 @@ HostWindowRegular::HostWindowRegular(WindowManager* window_manager,
                  constraints,
                  GetInitialRect(engine, preferred_size, constraints),
                  title,
-                 std::nullopt) {
+                 parent) {
   // TODO(knopp): Investigate sizing the window to its content with the help of
   // https://github.com/flutter/flutter/pull/173610.
   FML_CHECK(preferred_size.has_preferred_view_size);

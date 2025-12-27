@@ -43,7 +43,8 @@ class HostWindow {
       FlutterWindowsEngine* engine,
       const WindowSizeRequest& preferred_size,
       const WindowConstraints& preferred_constraints,
-      LPCWSTR title);
+      LPCWSTR title,
+      HWND parent);
 
   // Creates a dialog Win32 window with a child view confined to its client
   // area. |window_manager| is a pointer to the window manager that manages the

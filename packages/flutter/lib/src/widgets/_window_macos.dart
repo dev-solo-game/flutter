@@ -80,6 +80,7 @@ class WindowingOwnerMacOS extends WindowingOwner {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
   }) {
     final res = RegularWindowControllerMacOS(
       owner: this,
