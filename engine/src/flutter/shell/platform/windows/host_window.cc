@@ -385,11 +385,9 @@ LRESULT HostWindow::WndProc(HWND hwnd,
     params->rgrc[0] = newSize;
 
     return 0;
-  } 
-  else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
+  } else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
     return window->HandleMessage(hwnd, message, wparam, lparam);
-  } 
- 
+  }
 
   return DefWindowProc(hwnd, message, wparam, lparam);
 }
