@@ -232,6 +232,9 @@ abstract class RegularWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   factory RegularWindowController({
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
