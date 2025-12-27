@@ -19,6 +19,14 @@ class MainControllerWindowDelegate with RegularWindowControllerDelegate {
     super.onWindowDestroyed();
     exit(0);
   }
+  @override
+  void onWindowActivated(RegularWindowController controller,bool actevated){
+    super.onWindowActivated(controller,actevated);
+    print('Main window is activated: $actevated');
+    if(actevated == false){
+      controller.hide() ;
+    }
+  }
 }
 
 void main() {

@@ -777,6 +777,17 @@ class RegularWindowControllerLinux extends RegularWindowController {
       _window.unfullscreen();
     }
   }
+  @override
+  @internal
+  void show() {
+    //TODO
+  }
+
+  @override
+  @internal
+  void hide() {
+    //TODO
+  }
 }
 
 /// Implementation of [DialogWindowController] for the Linux platform.

@@ -304,6 +304,16 @@ class RegularWindowControllerMacOS extends RegularWindowController {
 
   @override
   String get title => _MacOSPlatformInterface.getTitle(getWindowHandle());
+
+  @override
+  void show() {
+    //TODO
+  }
+
+  @override
+  void hide() {
+    //TODO
+  }
 }
 
 /// Implementation of [DialogWindowController] for the macOS platform.

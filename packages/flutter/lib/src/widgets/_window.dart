@@ -141,6 +141,13 @@ mixin class RegularWindowControllerDelegate {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
     }
   }
+
+  @internal
+  void onWindowActivated(RegularWindowController controller,bool actevated) {
+    if (!isWindowingEnabled) {
+      throw UnsupportedError(_kWindowingDisabledErrorMessage);
+    }
+  }
 }
 
 /// A controller for a regular window.
@@ -375,6 +382,11 @@ abstract class RegularWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   void setFullscreen(bool fullscreen, {Display? display});
+
+  @internal
+  void show();
+  @internal
+  void hide();
 }
 
 /// Delegate class for dialog window controller.

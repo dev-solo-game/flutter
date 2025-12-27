@@ -37,6 +37,8 @@ const int _WM_SIZE = 0x0005;
 const int _WM_ACTIVATE = 0x0006;
 const int _WM_CLOSE = 0x0010;
 
+const int _SW_HIDE = 0;
+const int _SW_SHOW = 5;
 const int _SW_RESTORE = 9;
 const int _SW_MAXIMIZE = 3;
 const int _SW_MINIMIZE = 6;
@@ -384,6 +386,20 @@ class RegularWindowControllerWin32 extends RegularWindowController {
 
   @override
   @internal
+  void show() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_SHOW);
+  }
+
+  @override
+  @internal
+  void hide() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+  }
+
+  @override
+  @internal
   void setMaximized(bool maximized) {
     _ensureNotDestroyed();
     if (maximized) {
@@ -459,8 +475,15 @@ class RegularWindowControllerWin32 extends RegularWindowController {
       _owner._removeMessageHandler(_handler);
       _delegate.onWindowDestroyed();
       return 0;
-    } else if (message == _WM_SIZE || message == _WM_ACTIVATE) {
+    } else if (message == _WM_SIZE) {
       notifyListeners();
+    }else if(message == _WM_ACTIVATE){
+      notifyListeners();
+      if(wParam != 0){ //WA_INACTIVE(0) WA_ACTIVE(1) WA_CLICKACTIVE(2)
+        _delegate.onWindowActivated(this,true);
+      }else{
+        _delegate.onWindowActivated(this,false);
+      }
     }
     return null;
   }
