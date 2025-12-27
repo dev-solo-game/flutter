@@ -16,7 +16,7 @@ class HostWindowRegular : public HostWindow {
                     const WindowSizeRequest& preferred_size,
                     const BoxConstraints& constraints,
                     LPCWSTR title,
-                     HWND parent);
+                    HWND parent);
 
  private:
   static Rect GetInitialRect(FlutterWindowsEngine* engine,
