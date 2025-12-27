@@ -210,7 +210,7 @@ std::unique_ptr<HostWindow> HostWindow::CreateRegularWindow(
     HWND parent) {
   return std::unique_ptr<HostWindow>(new HostWindowRegular(
       window_manager, engine, preferred_size,
-      FromWindowConstraints(preferred_constraints), title , parent));
+      FromWindowConstraints(preferred_constraints), title, parent));
 }
 
 std::unique_ptr<HostWindow> HostWindow::CreateDialogWindow(
@@ -298,13 +298,13 @@ HostWindow::HostWindow(WindowManager* window_manager,
                window_rect.left - left_dropshadow_width,
                window_rect.top - top_dropshadow_height, 0, 0,
                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-  
-  //TODO fullscreen 
-  //SetFullscreen(true, std::nullopt);
+
+  // TODO fullscreen
+  // SetFullscreen(true, std::nullopt);
   WINDOWINFO window_info = {.cbSize = sizeof(WINDOWINFO)};
   GetWindowInfo(window_handle_, &window_info);
   SetWindowLong(window_handle_, GWL_STYLE,
-              window_info.dwStyle & ~(WS_CAPTION | WS_THICKFRAME));
+                window_info.dwStyle & ~(WS_CAPTION | WS_THICKFRAME));
   if (window_info.dwExStyle == 0) {
     SetWindowLong(
         window_handle_, GWL_EXSTYLE,
@@ -312,15 +312,15 @@ HostWindow::HostWindow(WindowManager* window_manager,
                                   WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
   }
 
-  SetWindowPos(window_handle_, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+  SetWindowPos(window_handle_, HWND_TOPMOST, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE);
   // We call SetWindowPos first to set the window flags immediately. This
   // makes it so that the WM_GETMINMAXINFO gets called with the correct window
   // and content sizes.
   SetWindowPos(window_handle_, NULL, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-  
-  SetWindowPos(window_handle_, nullptr, 0,
-               0, 2560, 1440,
+
+  SetWindowPos(window_handle_, nullptr, 0, 0, 2560, 1440,
                SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
   UpdateTheme(window_handle_);

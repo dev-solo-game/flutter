@@ -31,7 +31,7 @@ FlutterViewId WindowManager::CreateRegularWindow(
     const RegularWindowCreationRequest* request) {
   auto window = HostWindow::CreateRegularWindow(
       this, engine_, request->preferred_size, request->preferred_constraints,
-      request->title,request->parent_or_null);
+      request->title, request->parent_or_null);
   if (!window || !window->GetWindowHandle()) {
     FML_LOG(ERROR) << "Failed to create host window";
     return -1;
