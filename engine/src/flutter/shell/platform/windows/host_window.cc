@@ -297,7 +297,7 @@ HostWindow::HostWindow(WindowManager* window_manager,
   SetWindowPos(window_handle_, nullptr,
                window_rect.left - left_dropshadow_width,
                window_rect.top - top_dropshadow_height, 0, 0,
-               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
   UpdateTheme(window_handle_);
 
@@ -360,9 +360,36 @@ LRESULT HostWindow::WndProc(HWND hwnd,
         static_cast<WindowsProcTable*>(create_struct->lpCreateParams);
     windows_proc_table->EnableNonClientDpiScaling(hwnd);
     EnableTransparentWindowBackground(hwnd, *windows_proc_table);
-  } else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
+  } else if (message == WM_NCCALCSIZE) {
+    if (!wparam) {
+      return 0;
+    }
+
+    auto params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+
+    // Store the original top before the default window proc applies the
+    // default frame.
+    const auto originalTop = params->rgrc[0].top;
+
+    const auto originalSize = params->rgrc[0];
+
+    // apply the default frame
+    const auto ret = DefWindowProc(hwnd, WM_NCCALCSIZE, wparam, lparam);
+    if (ret != 0) {
+      return ret;
+    }
+    auto newSize = params->rgrc[0];
+    // Re-apply the original top from before the size of the default frame was
+    // applied.
+    newSize.top = originalTop;
+    params->rgrc[0] = newSize;
+
+    return 0;
+  } 
+  else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
     return window->HandleMessage(hwnd, message, wparam, lparam);
-  }
+  } 
+ 
 
   return DefWindowProc(hwnd, message, wparam, lparam);
 }
@@ -511,7 +538,6 @@ void HostWindow::SetContentSize(const WindowSizeRequest& size) {
     if (!window_size) {
       return;
     }
-
     SetWindowPos(window_handle_, NULL, 0, 0, window_size->width(),
                  window_size->height(),
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
