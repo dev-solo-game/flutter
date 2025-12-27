@@ -75,6 +75,24 @@ class _WindowsTable extends StatelessWidget {
                     onPressed: () => _showWindowEditDialog(controller, context),
                   ),
                   IconButton(
+                    icon: const Icon(Icons.shower_outlined),
+                    onPressed: () async {
+                      final c = controller.controller;
+                      if (c is RegularWindowController) {
+                        c.show();
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.hide_image_outlined),
+                    onPressed: () async {
+                      final c = controller.controller;
+                      if (c is RegularWindowController) {
+                        c.hide();
+                      }
+                    },
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.delete_outlined),
                     onPressed: () async {
                       controller.controller.destroy();

@@ -484,6 +484,7 @@ class RegularWindowControllerWin32 extends RegularWindowController {
       }else{
         _delegate.onWindowActivated(this,false);
       }
+      return 0;
     }
     return null;
   }
