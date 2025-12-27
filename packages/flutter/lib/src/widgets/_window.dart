@@ -236,6 +236,7 @@ abstract class RegularWindowController extends BaseWindowController {
     BoxConstraints? preferredConstraints,
     String? title,
     RegularWindowControllerDelegate? delegate,
+    BaseWindowController? parent,
   }) {
     if (!isWindowingEnabled) {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
@@ -251,6 +252,7 @@ abstract class RegularWindowController extends BaseWindowController {
       preferredSize: preferredSize,
       preferredConstraints: preferredConstraints,
       title: title,
+      parent: parent,
     );
   }
 
@@ -795,6 +797,7 @@ abstract class WindowingOwner {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
   });
 
   /// Creates a [DialogWindowController] with the provided properties.
@@ -859,6 +862,7 @@ class _WindowingOwnerUnsupported extends WindowingOwner {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
   }) {
     throw UnsupportedError(errorMessage);
   }

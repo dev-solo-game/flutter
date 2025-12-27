@@ -43,6 +43,7 @@ struct RegularWindowCreationRequest {
   WindowSizeRequest preferred_size;
   WindowConstraints preferred_constraints;
   LPCWSTR title;
+  HWND parent_or_null;
 };
 
 struct DialogWindowCreationRequest {

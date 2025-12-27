@@ -559,6 +559,7 @@ class WindowingOwnerLinux extends WindowingOwner {
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
+    BaseWindowController? parent,
     required RegularWindowControllerDelegate delegate,
   }) {
     final controller = RegularWindowControllerLinux(
