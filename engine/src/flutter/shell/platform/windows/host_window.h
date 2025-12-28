@@ -103,6 +103,16 @@ class HostWindow {
   // windows are enabled or disabled.
   void UpdateModalStateLayer();
 
+  void MoveWindowXY(double x, double y);
+  void SetPosition(double x, double y);
+  Point GetPosition();
+  
+  // Handles window dragging.
+  // state: 0 = start (record mouse position and enter drag state)
+  //        1 = update (move window based on current mouse position)
+  //        2 = end (exit drag state)
+  void DragWindow(int state);
+
  protected:
   friend WindowManager;
 
@@ -182,6 +192,12 @@ class HostWindow {
   // responds to changes in DPI. Delegates other messages to the controller.
   static LRESULT WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
+  static LRESULT OnNcCalcSize(HWND hwnd, WPARAM wParam, LPARAM lParam);
+  static LRESULT OnNcHitTest(HWND hwnd,
+                             WPARAM wParam,
+                             LPARAM lParam,
+                             int titleBarHeightLogical);
+
   // Controller for this window.
   WindowManager* const window_manager_ = nullptr;
 
@@ -213,6 +229,11 @@ class HostWindow {
 
   // Used to mark a window as fullscreen.
   Microsoft::WRL::ComPtr<ITaskbarList2> task_bar_list_;
+
+  // Drag state tracking.
+  bool is_dragging_ = false;
+  POINT drag_start_cursor_pos_ = {0, 0};
+  POINT drag_start_window_pos_ = {0, 0};
 
   FML_DISALLOW_COPY_AND_ASSIGN(HostWindow);
 };

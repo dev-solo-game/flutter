@@ -1,0 +1,52 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter: Debug (local-engine)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--debug",
+        "--local-engine",
+        "host_debug",
+        "--local-engine-host",
+        "host_debug"
+      ]
+    },
+    {
+      "name": "Flutter: Profile (local-engine)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "flutterMode": "profile",
+      "args": [
+        "--local-engine-src-path",
+        "e:\\flutter_source\\flutter_engine\\engine\\src",
+        "--local-engine",
+        "host_profile"
+      ]
+    },
+    {
+      "name": "Flutter: Release (local-engine)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": [
+        "--local-engine-src-path",
+        "e:\\flutter_source\\flutter_engine\\engine\\src",
+        "--local-engine",
+        "host_release"
+      ]
+    },
+    {
+      "name": "Flutter: Debug (normal)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    }
+  ]
+}

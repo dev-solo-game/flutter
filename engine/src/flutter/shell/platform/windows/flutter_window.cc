@@ -757,6 +757,10 @@ FlutterWindow::HandleMessage(UINT const message,
         return 0;
       }
       break;
+      // TODO tilebar
+      // case WM_NCHITTEST: {
+      //   return HTTRANSPARENT;
+      // }
   }
 
   return Win32DefWindowProc(window_handle_, message, wparam, result_lparam);

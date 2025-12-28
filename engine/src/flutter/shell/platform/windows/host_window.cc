@@ -301,27 +301,29 @@ HostWindow::HostWindow(WindowManager* window_manager,
 
   // TODO fullscreen
   // SetFullscreen(true, std::nullopt);
-  WINDOWINFO window_info = {.cbSize = sizeof(WINDOWINFO)};
-  GetWindowInfo(window_handle_, &window_info);
-  SetWindowLong(window_handle_, GWL_STYLE,
-                window_info.dwStyle & ~(WS_CAPTION | WS_THICKFRAME));
-  if (window_info.dwExStyle == 0) {
-    SetWindowLong(
-        window_handle_, GWL_EXSTYLE,
-        window_info.dwExStyle & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE |
-                                  WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
-  }
-
-  SetWindowPos(window_handle_, HWND_TOPMOST, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE);
-  // We call SetWindowPos first to set the window flags immediately. This
-  // makes it so that the WM_GETMINMAXINFO gets called with the correct window
-  // and content sizes.
-  SetWindowPos(window_handle_, NULL, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-
-  SetWindowPos(window_handle_, nullptr, 0, 0, 2560, 1440,
-               SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+  // {
+  //   WINDOWINFO window_info = {.cbSize = sizeof(WINDOWINFO)};
+  //   GetWindowInfo(window_handle_, &window_info);
+  //   SetWindowLong(window_handle_, GWL_STYLE,
+  //                 window_info.dwStyle & ~(WS_CAPTION | WS_THICKFRAME));
+  //
+  //   SetWindowLong(
+  //       window_handle_, GWL_EXSTYLE,
+  //       window_info.dwExStyle & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE |
+  //                                 WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
+  //
+  //   SetWindowPos(window_handle_, HWND_TOPMOST, 0, 0, 0, 0,
+  //                SWP_NOMOVE | SWP_NOSIZE);
+  //   // We call SetWindowPos first to set the window flags immediately. This
+  //   // makes it so that the WM_GETMINMAXINFO gets called with the correct
+  //   window
+  //   // and content sizes.
+  //   SetWindowPos(window_handle_, NULL, 0, 0, 0, 0,
+  //                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+  //
+  //   SetWindowPos(window_handle_, nullptr, 0, 0, 2560, 1440,
+  //                SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+  // }
 
   UpdateTheme(window_handle_);
 
@@ -385,20 +387,54 @@ LRESULT HostWindow::WndProc(HWND hwnd,
     windows_proc_table->EnableNonClientDpiScaling(hwnd);
     EnableTransparentWindowBackground(hwnd, *windows_proc_table);
   } else if (message == WM_NCCALCSIZE) {
-    if (!wparam) {
-      return 0;
-    }
+    return OnNcCalcSize(hwnd, wparam, lparam);
+  } else if (message == WM_NCHITTEST) {
+    return OnNcHitTest(hwnd, wparam, lparam, 30 /* title bar height logical */);
+  } else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
+    return window->HandleMessage(hwnd, message, wparam, lparam);
+  }
 
-    auto params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+  return DefWindowProc(hwnd, message, wparam, lparam);
+}
 
-    // Store the original top before the default window proc applies the
-    // default frame.
+inline int ScaleByDpi(int value, UINT dpi) {
+  return MulDiv(value, dpi, 96);
+}
+
+struct NcMetrics {
+  int cxFrame;
+  int cyFrame;
+  int paddedBorder;
+  int resizeBorder;
+};
+
+NcMetrics GetNcMetrics(UINT dpi) {
+  NcMetrics m{};
+  m.cxFrame = ScaleByDpi(GetSystemMetrics(SM_CXFRAME), dpi);
+  m.cyFrame = ScaleByDpi(GetSystemMetrics(SM_CYFRAME), dpi);
+  m.paddedBorder = ScaleByDpi(GetSystemMetrics(SM_CXPADDEDBORDER), dpi);
+  m.resizeBorder = m.cxFrame + m.paddedBorder;
+  return m;
+}
+
+LRESULT HostWindow::OnNcCalcSize(HWND hwnd, WPARAM wParam, LPARAM lParam) {
+  if (!wParam) {
+    return 0;
+  }
+  NCCALCSIZE_PARAMS* params = (NCCALCSIZE_PARAMS*)lParam;
+  UINT const dpi = flutter::GetDpiForHWND(hwnd);
+  if (IsZoomed(hwnd)) {
+    auto m = GetNcMetrics(dpi);
+
+    params->rgrc[0].left += m.resizeBorder;
+    params->rgrc[0].right -= m.resizeBorder;
+    params->rgrc[0].top += m.resizeBorder;
+    params->rgrc[0].bottom -= m.resizeBorder;
+  } else {
     const auto originalTop = params->rgrc[0].top;
-
     const auto originalSize = params->rgrc[0];
-
     // apply the default frame
-    const auto ret = DefWindowProc(hwnd, WM_NCCALCSIZE, wparam, lparam);
+    const auto ret = DefWindowProc(hwnd, WM_NCCALCSIZE, wParam, lParam);
     if (ret != 0) {
       return ret;
     }
@@ -407,13 +443,168 @@ LRESULT HostWindow::WndProc(HWND hwnd,
     // applied.
     newSize.top = originalTop;
     params->rgrc[0] = newSize;
+  }
+  return 0;
+}
 
-    return 0;
-  } else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
-    return window->HandleMessage(hwnd, message, wparam, lparam);
+LRESULT HostWindow::OnNcHitTest(HWND hwnd,
+                                WPARAM wParam,
+                                LPARAM lParam,
+                                int titleBarHeightLogical) {
+  POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+  ScreenToClient(hwnd, &pt);
+
+  RECT rc;
+  GetClientRect(hwnd, &rc);
+  UINT const dpi = flutter::GetDpiForHWND(hwnd);
+
+  auto m = GetNcMetrics(dpi);
+  int titleBarHeight = ScaleByDpi(titleBarHeightLogical, dpi);
+
+  if (pt.y < m.resizeBorder) {
+    if (pt.x < m.resizeBorder)
+      return HTTOPLEFT;
+    if (pt.x > rc.right - m.resizeBorder)
+      return HTTOPRIGHT;
+    return HTTOP;
+  }
+  if (pt.y > rc.bottom - m.resizeBorder) {
+    if (pt.x < m.resizeBorder)
+      return HTBOTTOMLEFT;
+    if (pt.x > rc.right - m.resizeBorder)
+      return HTBOTTOMRIGHT;
+    return HTBOTTOM;
+  }
+  if (pt.x < m.resizeBorder)
+    return HTLEFT;
+  if (pt.x > rc.right - m.resizeBorder)
+    return HTRIGHT;
+
+  if (pt.y < titleBarHeight) {
+    return HTCAPTION;
   }
 
-  return DefWindowProc(hwnd, message, wparam, lparam);
+  return HTCLIENT;
+}
+
+void HostWindow::MoveWindowXY(double x, double y) {
+  RECT window_rect;
+  if (GetWindowRect(window_handle_, &window_rect)) {
+    // Get DPI scale factor to convert logical pixels to physical pixels
+    UINT const dpi = GetDpiForHWND(window_handle_);
+    double const scale_factor =
+        static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
+
+    // Convert logical delta to physical delta
+    LONG const physical_x = static_cast<LONG>(x * scale_factor);
+    LONG const physical_y = static_cast<LONG>(y * scale_factor);
+
+    LONG new_x = window_rect.left + physical_x;
+    LONG new_y = window_rect.top + physical_y;
+    SetWindowPos(window_handle_, nullptr, new_x, new_y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+}
+
+void HostWindow::SetPosition(double x, double y) {
+  // Get DPI scale factor to convert logical pixels to physical pixels
+  UINT const dpi = GetDpiForHWND(window_handle_);
+  double const scale_factor =
+      static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
+
+  // Convert logical position to physical position
+  int const physical_x = static_cast<int>(x * scale_factor);
+  int const physical_y = static_cast<int>(y * scale_factor);
+
+  // Account for drop shadow offset when setting position.
+  // The user expects to set the visible frame position, not the window rect.
+  RECT frame_rect;
+  RECT window_rect;
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle_,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect))) &&
+      GetWindowRect(window_handle_, &window_rect)) {
+    // Calculate shadow offset
+    LONG const left_shadow = frame_rect.left - window_rect.left;
+    LONG const top_shadow = frame_rect.top - window_rect.top;
+
+    // Adjust position to account for shadow
+    int new_x = physical_x - static_cast<int>(left_shadow);
+    int new_y = physical_y - static_cast<int>(top_shadow);
+    SetWindowPos(window_handle_, nullptr, new_x, new_y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  } else {
+    // Fallback without shadow adjustment
+    SetWindowPos(window_handle_, nullptr, physical_x, physical_y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+}
+
+Point HostWindow::GetPosition() {
+  // Get DPI scale factor to convert physical pixels to logical pixels
+  UINT const dpi = GetDpiForHWND(window_handle_);
+  double const scale_factor =
+      static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
+
+  // Use DWMWA_EXTENDED_FRAME_BOUNDS to get the visible frame position
+  // (excluding drop shadow), which matches what the user expects.
+  RECT frame_rect;
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle_,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect)))) {
+    // Convert physical position to logical position
+    return Point(static_cast<double>(frame_rect.left) / scale_factor,
+                 static_cast<double>(frame_rect.top) / scale_factor);
+  }
+
+  // Fallback to window rect if DWM fails
+  RECT window_rect;
+  if (GetWindowRect(window_handle_, &window_rect)) {
+    return Point(static_cast<double>(window_rect.left) / scale_factor,
+                 static_cast<double>(window_rect.top) / scale_factor);
+  }
+
+  return Point(0, 0);
+}
+
+void HostWindow::DragWindow(int state) {
+  switch (state) {
+    case 0: {
+      // Start dragging: record current cursor and window position
+      GetCursorPos(&drag_start_cursor_pos_);
+      RECT window_rect;
+      if (GetWindowRect(window_handle_, &window_rect)) {
+        drag_start_window_pos_.x = window_rect.left;
+        drag_start_window_pos_.y = window_rect.top;
+      }
+      is_dragging_ = true;
+      break;
+    }
+    case 1: {
+      // Update: move window based on cursor delta
+      if (is_dragging_) {
+        POINT current_cursor_pos;
+        GetCursorPos(&current_cursor_pos);
+        
+        LONG delta_x = current_cursor_pos.x - drag_start_cursor_pos_.x;
+        LONG delta_y = current_cursor_pos.y - drag_start_cursor_pos_.y;
+        
+        LONG new_x = drag_start_window_pos_.x + delta_x;
+        LONG new_y = drag_start_window_pos_.y + delta_y;
+        
+        SetWindowPos(window_handle_, nullptr, new_x, new_y, 0, 0,
+                     SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+      }
+      break;
+    }
+    case 2: {
+      // End dragging
+      is_dragging_ = false;
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 LRESULT HostWindow::HandleMessage(HWND hwnd,
@@ -499,9 +690,9 @@ LRESULT HostWindow::HandleMessage(HWND hwnd,
         // Resize and reposition the child content window.
         RECT client_rect;
         GetClientRect(hwnd, &client_rect);
-        MoveWindow(child_content, client_rect.left, client_rect.top,
-                   client_rect.right - client_rect.left,
-                   client_rect.bottom - client_rect.top, TRUE);
+        ::MoveWindow(child_content, client_rect.left, client_rect.top,
+                     client_rect.right - client_rect.left,
+                     client_rect.bottom - client_rect.top, TRUE);
       }
       return 0;
     }
@@ -513,7 +704,8 @@ LRESULT HostWindow::HandleMessage(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
-
+    case WM_NCHITTEST:
+      return OnNcHitTest(hwnd, wparam, lparam, 100);
     default:
       break;
   }
@@ -904,5 +1096,4 @@ void HostWindow::UpdateModalStateLayer() {
     }
   }
 }
-
 }  // namespace flutter

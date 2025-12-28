@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
 import 'window_content.dart';
+import 'custom_title_bar.dart';
 import 'package:flutter/src/widgets/_window.dart';
 
 class DialogWindowContent extends StatelessWidget {
@@ -23,56 +24,71 @@ class DialogWindowContent extends StatelessWidget {
     final child = FocusScope(
       autofocus: true,
       child: Scaffold(
-        appBar: AppBar(title: Text('Dialog')),
-        body: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    final UniqueKey key = UniqueKey();
-                    windowManager.add(
-                      KeyedWindow(
-                        key: key,
-                        controller: DialogWindowController(
-                          preferredSize: windowSettings.dialogSize,
-                          delegate: CallbackDialogWindowControllerDelegate(
-                            onDestroyed: () => windowManager.remove(key),
-                          ),
-                          parent: window,
-                          title: 'Dialog',
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('Create Modal Dialog'),
-                ),
-                const SizedBox(height: 20),
-                ListenableBuilder(
-                  listenable: window,
-                  builder: (BuildContext context, Widget? _) {
-                    final dpr = MediaQuery.of(context).devicePixelRatio;
-                    final windowSize = WindowScope.contentSizeOf(context);
-                    return Text(
-                      'View ID: ${window.rootView.viewId}\n'
-                      'Parent View ID: ${window.parent?.rootView.viewId ?? "None"}\n'
-                      'Size: ${(windowSize.width).toStringAsFixed(1)}\u00D7${(windowSize.height).toStringAsFixed(1)}\n'
-                      'Device Pixel Ratio: $dpr',
-                      textAlign: TextAlign.center,
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    window.destroy();
-                  },
-                  child: const Text('Close'),
-                ),
-              ],
+        body: Column(
+          children: [
+            // 自定义标题栏
+            DialogWindowTitleBar(
+              controller: window,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
             ),
-          ),
+            // 主内容区域
+            Expanded(
+              child: SingleChildScrollView(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            final UniqueKey key = UniqueKey();
+                            windowManager.add(
+                              KeyedWindow(
+                                key: key,
+                                controller: DialogWindowController(
+                                  preferredSize: windowSettings.dialogSize,
+                                  delegate: CallbackDialogWindowControllerDelegate(
+                                    onDestroyed: () => windowManager.remove(key),
+                                  ),
+                                  parent: window,
+                                  title: 'Dialog',
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Create Modal Dialog'),
+                        ),
+                        const SizedBox(height: 20),
+                        ListenableBuilder(
+                          listenable: window,
+                          builder: (BuildContext context, Widget? _) {
+                            final dpr = MediaQuery.of(context).devicePixelRatio;
+                            final windowSize = WindowScope.contentSizeOf(context);
+                            return Text(
+                              'View ID: ${window.rootView.viewId}\n'
+                              'Parent View ID: ${window.parent?.rootView.viewId ?? "None"}\n'
+                              'Size: ${(windowSize.width).toStringAsFixed(1)}\u00D7${(windowSize.height).toStringAsFixed(1)}\n'
+                              'Device Pixel Ratio: $dpr',
+                              textAlign: TextAlign.center,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            window.destroy();
+                          },
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -143,6 +143,9 @@ class WindowingOwnerWin32 extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
     required RegularWindowControllerDelegate delegate,
   }) {
     return RegularWindowControllerWin32(
@@ -152,6 +155,9 @@ class WindowingOwnerWin32 extends WindowingOwner {
       preferredConstraints: preferredConstraints,
       title: title,
       parent: parent,
+      center:center,
+      isResizable:isResizable,
+      isFullscreenAllMonitors:isFullscreenAllMonitors,
     );
   }
 
@@ -163,6 +169,9 @@ class WindowingOwnerWin32 extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
+        bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) {
     return DialogWindowControllerWin32(
       owner: this,
@@ -171,6 +180,9 @@ class WindowingOwnerWin32 extends WindowingOwner {
       preferredConstraints: preferredConstraints,
       title: title,
       parent: parent,
+            center:center,
+      isResizable:isResizable,
+      isFullscreenAllMonitors:isFullscreenAllMonitors,
     );
   }
 
@@ -282,6 +294,9 @@ class RegularWindowControllerWin32 extends RegularWindowController {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) : _owner = owner,
        _delegate = delegate,
        _parent = parent,
@@ -304,6 +319,9 @@ class RegularWindowControllerWin32 extends RegularWindowController {
               parent.rootView.viewId,
             )
           : null,
+      center,
+      isResizable,
+      isFullscreenAllMonitors,
     );
     if (viewId < 0) {
       throw Exception('Windows failed to create a regular window with a valid view id.');
@@ -335,6 +353,15 @@ class RegularWindowControllerWin32 extends RegularWindowController {
   String get title {
     _ensureNotDestroyed();
     return _Win32PlatformInterface.getWindowTitle(_owner.allocator, getWindowHandle());
+  }
+
+  @override
+  @internal
+  Offset get position {
+    _ensureNotDestroyed();
+    final _ActualWindowPosition position = _Win32PlatformInterface.getWindowPosition(getWindowHandle());
+    final result = Offset(position.x, position.y);
+    return result;
   }
 
   @override
@@ -407,6 +434,19 @@ class RegularWindowControllerWin32 extends RegularWindowController {
   void hide() {
     _ensureNotDestroyed();
     _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+  }
+
+  @override
+  @internal
+  void dragWindow(int state){
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.dragWindow(getWindowHandle(), state);
+  }
+  @override
+  @internal
+  void setPosition(double x ,double y){
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setPosition(_owner.allocator,getWindowHandle(), x , y);
   }
 
   @override
@@ -544,6 +584,9 @@ class DialogWindowControllerWin32 extends DialogWindowController {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
+            bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) : _owner = owner,
        _delegate = delegate,
        _parent = parent,
@@ -566,6 +609,9 @@ class DialogWindowControllerWin32 extends DialogWindowController {
               parent.rootView.viewId,
             )
           : null,
+      center,
+      isResizable,
+      isFullscreenAllMonitors,
     );
     if (viewId < 0) {
       throw Exception('Windows failed to create a dialog window with a valid view id.');
@@ -597,6 +643,15 @@ class DialogWindowControllerWin32 extends DialogWindowController {
   String get title {
     _ensureNotDestroyed();
     return _Win32PlatformInterface.getWindowTitle(_owner.allocator, getWindowHandle());
+  }
+
+  @override
+  @internal
+  Offset get position {
+    _ensureNotDestroyed();
+    final _ActualWindowPosition position = _Win32PlatformInterface.getWindowPosition(getWindowHandle());
+    final result = Offset(position.x, position.y);
+    return result;
   }
 
   @override
@@ -645,7 +700,32 @@ class DialogWindowControllerWin32 extends DialogWindowController {
     _ensureNotDestroyed();
     _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_RESTORE);
   }
+  @override
+  @internal
+  void show() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_SHOW);
+  }
 
+  @override
+  @internal
+  void hide() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+  }
+
+  @override
+  @internal
+  void dragWindow(int state){
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.dragWindow(getWindowHandle(), state);
+  }
+  @override
+  @internal
+  void setPosition(double x ,double y){
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setPosition(_owner.allocator,getWindowHandle(), x , y);
+  }
   @override
   @internal
   void setMinimized(bool minimized) {
@@ -748,6 +828,9 @@ class _Win32PlatformInterface {
     BoxConstraints? preferredConstraints,
     String? title,
     HWND? parent,
+    bool center,
+    bool isResizable,
+    bool isFullscreenAllMonitors,
   ) {
     final ffi.Pointer<_RegularWindowCreationRequest> request =
         allocator<_RegularWindowCreationRequest>();
@@ -756,6 +839,9 @@ class _Win32PlatformInterface {
       request.ref.preferredConstraints.from(preferredConstraints);
       request.ref.title = (title ?? 'Regular window').toNativeUtf16(allocator: allocator);
       request.ref.parentOrNull = parent ?? ffi.Pointer<ffi.Void>.fromAddress(0);
+            request.ref.center = center;
+      request.ref.isResizable = isResizable;
+      request.ref.isFullscreenAllMonitors = isFullscreenAllMonitors;
       return _createRegularWindow(engineId, request);
     } finally {
       allocator.free(request);
@@ -777,6 +863,9 @@ class _Win32PlatformInterface {
     BoxConstraints? preferredConstraints,
     String? title,
     HWND? parent,
+    bool center,
+    bool isResizable,
+    bool isFullscreenAllMonitors,
   ) {
     final ffi.Pointer<_DialogWindowCreationRequest> request =
         allocator<_DialogWindowCreationRequest>();
@@ -785,6 +874,9 @@ class _Win32PlatformInterface {
       request.ref.preferredConstraints.from(preferredConstraints);
       request.ref.title = (title ?? 'Dialog window').toNativeUtf16(allocator: allocator);
       request.ref.parentOrNull = parent ?? ffi.Pointer<ffi.Void>.fromAddress(0);
+      request.ref.center = center;
+      request.ref.isResizable = isResizable;
+      request.ref.isFullscreenAllMonitors = isFullscreenAllMonitors;
       return _createDialogWindow(engineId, request);
     } finally {
       allocator.free(request);
@@ -898,6 +990,41 @@ class _Win32PlatformInterface {
     ffi.Pointer<_WindowFullscreenRequest> request,
   );
 
+  static void dragWindow(
+    HWND windowHandle,
+    int state,
+    ) {
+    try {
+      _dragWindow(windowHandle, state);
+    } finally {
+    }
+  }
+  static void setPosition(
+    ffi.Allocator allocator,
+    HWND windowHandle,
+    double x,
+    double y,
+    ) {
+    final ffi.Pointer<_WindowPositionRequest> request = allocator<_WindowPositionRequest>();
+    try {
+      request.ref.x = x;
+      request.ref.y = y;
+      _setPosition(windowHandle, request);
+    } finally {
+      allocator.free(request);
+    }
+  }
+  @ffi.Native<ffi.Void Function(HWND,ffi.Int32)>(symbol: 'InternalFlutterWindows_WindowManager_DragWindow')
+  external static void _dragWindow(HWND windowHandle , int state);
+
+  @ffi.Native<ffi.Void Function(HWND,ffi.Pointer<_WindowPositionRequest>)>(symbol: 'InternalFlutterWindows_WindowManager_SetPosition')
+  external static void _setPosition(HWND windowHandle, ffi.Pointer<_WindowPositionRequest> request);
+
+  @ffi.Native<_ActualWindowPosition Function(HWND)>(
+    symbol: 'InternalFlutterWindows_WindowManager_GetWindowPosition',
+  )
+  external static _ActualWindowPosition getWindowPosition(HWND windowHandle);
+
   @ffi.Native<ffi.Bool Function(HWND)>(symbol: 'InternalFlutterWindows_WindowManager_GetFullscreen')
   external static bool getFullscreen(HWND windowHandle);
 
@@ -937,6 +1064,12 @@ final class _RegularWindowCreationRequest extends ffi.Struct {
   external _WindowConstraintsRequest preferredConstraints;
   external ffi.Pointer<_Utf16> title;
   external HWND parentOrNull;
+  @ffi.Bool()
+  external bool center;
+  @ffi.Bool()
+  external bool isResizable;
+  @ffi.Bool()
+  external bool isFullscreenAllMonitors;
 }
 
 /// Payload for the creation method used by [_Win32PlatformInterface.createDialogWindow].
@@ -945,6 +1078,12 @@ final class _DialogWindowCreationRequest extends ffi.Struct {
   external _WindowConstraintsRequest preferredConstraints;
   external ffi.Pointer<_Utf16> title;
   external HWND parentOrNull;
+  @ffi.Bool()
+  external bool center;
+  @ffi.Bool()
+  external bool isResizable;
+  @ffi.Bool()
+  external bool isFullscreenAllMonitors;
 }
 
 /// Payload for the initialization request for the windowing subsystem used
@@ -1000,6 +1139,19 @@ final class _WindowConstraintsRequest extends ffi.Struct {
   }
 }
 
+final class _WindowPositionRequest extends ffi.Struct {
+  @ffi.Double()
+  external double x;
+
+  @ffi.Double()
+  external double y;
+
+  void from(double x , double y) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
 /// A message received for all toplevel windows, used by [_WindowingInitRequest].
 final class _WindowsMessage extends ffi.Struct {
   @ffi.Int64()
@@ -1043,6 +1195,14 @@ final class _WindowFullscreenRequest extends ffi.Struct {
 
   @ffi.Uint64()
   external int displayId;
+}
+
+final class _ActualWindowPosition extends ffi.Struct {
+  @ffi.Double()
+  external double x;
+
+  @ffi.Double()
+  external double y;
 }
 
 /// The contents of a native zero-terminated array of UTF-16 code units.

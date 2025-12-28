@@ -74,7 +74,7 @@ class _MultiWindowAppState extends State<MultiWindowApp> {
   Widget build(BuildContext context) {
     final Widget mainWindowWidget = RegularWindow(
       controller: controller,
-      child: MaterialApp(home: MainWindow()),
+      child: MaterialApp(home: MainWindow(controller: controller)),
     );
     return WindowManagerAccessor(
       windowManager: windowManager,

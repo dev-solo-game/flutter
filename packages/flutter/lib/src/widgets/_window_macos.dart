@@ -81,6 +81,9 @@ class WindowingOwnerMacOS extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
+            bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) {
     final res = RegularWindowControllerMacOS(
       owner: this,
@@ -99,6 +102,9 @@ class WindowingOwnerMacOS extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) {
     final res = DialogWindowControllerMacOS(
       owner: this,
@@ -307,12 +313,24 @@ class RegularWindowControllerMacOS extends RegularWindowController {
   String get title => _MacOSPlatformInterface.getTitle(getWindowHandle());
 
   @override
+  Offset get position => Offset(0,0); //TODO
+
+  @override
   void show() {
     //TODO
   }
 
   @override
   void hide() {
+    //TODO
+  }
+
+    @override
+  void dragWindow(int state){
+    //TODO
+  }
+  @override
+  void setPosition(double x ,double y){
     //TODO
   }
 }
@@ -445,7 +463,24 @@ class DialogWindowControllerMacOS extends DialogWindowController {
       _MacOSPlatformInterface.unminimize(getWindowHandle());
     }
   }
+  @override
+  void show() {
+    //TODO
+  }
 
+  @override
+  void hide() {
+    //TODO
+  }
+
+    @override
+  void dragWindow(int state){
+    //TODO
+  }
+  @override
+  void setPosition(double x ,double y){
+    //TODO
+  }
   @override
   bool get isMinimized {
     _ensureNotDestroyed();
@@ -463,6 +498,9 @@ class DialogWindowControllerMacOS extends DialogWindowController {
 
   @override
   String get title => _MacOSPlatformInterface.getTitle(getWindowHandle());
+
+  @override
+  Offset get position => Offset(0,0); //TODO
 
   @override
   final BaseWindowController? parent;

@@ -560,6 +560,9 @@ class WindowingOwnerLinux extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
     required RegularWindowControllerDelegate delegate,
   }) {
     final controller = RegularWindowControllerLinux(
@@ -581,6 +584,9 @@ class WindowingOwnerLinux extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
+    bool center = false,
+    bool isResizable = false,
+    bool isFullscreenAllMonitors = false,
   }) {
     final controller = DialogWindowControllerLinux(
       owner: this,
@@ -704,6 +710,10 @@ class RegularWindowControllerLinux extends RegularWindowController {
 
   @override
   @internal
+  Offset get position => Offset(0,0); //TODO
+
+  @override
+  @internal
   bool get isActivated => _window.isActive();
 
   @override
@@ -787,6 +797,17 @@ class RegularWindowControllerLinux extends RegularWindowController {
   @override
   @internal
   void hide() {
+    //TODO
+  }
+  @override
+  @internal
+  void dragWindow(int state){
+    //TODO
+  }
+
+  @override
+  @internal
+  void setPosition(double x ,double y){
     //TODO
   }
 }
@@ -904,6 +925,10 @@ class DialogWindowControllerLinux extends DialogWindowController {
 
   @override
   @internal
+  Offset get position => Offset(0,0); //TODO
+
+  @override
+  @internal
   bool get isActivated => _window.isActive();
 
   @override
@@ -948,5 +973,27 @@ class DialogWindowControllerLinux extends DialogWindowController {
     } else {
       _window.deiconify();
     }
+  }
+  @override
+  @internal
+  void show() {
+    //TODO
+  }
+
+  @override
+  @internal
+  void hide() {
+    //TODO
+  }
+  @override
+  @internal
+  void dragWindow(int state){
+    //TODO
+  }
+
+  @override
+  @internal
+  void setPosition(double x ,double y){
+    //TODO
   }
 }

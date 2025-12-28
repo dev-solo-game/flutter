@@ -13,36 +13,51 @@ import 'window_settings_dialog.dart';
 import 'models.dart';
 import 'regular_window_edit_dialog.dart';
 import 'dialog_window_edit_dialog.dart';
+import 'custom_title_bar.dart';
 
 class MainWindow extends StatelessWidget {
-  const MainWindow({super.key});
+  const MainWindow({super.key, required this.controller});
+
+  final RegularWindowController controller;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Multi Window Reference App')),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
+          // 自定义标题栏
+          RegularWindowTitleBar(
+            controller: controller,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
+          // 主内容区域
           Expanded(
-            flex: 60,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: _WindowsTable(),
+                  flex: 60,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: _WindowsTable(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 40,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [Expanded(child: _WindowCreatorCard())],
                   ),
                 ),
               ],
-            ),
-          ),
-          Expanded(
-            flex: 40,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [Expanded(child: _WindowCreatorCard())],
             ),
           ),
         ],

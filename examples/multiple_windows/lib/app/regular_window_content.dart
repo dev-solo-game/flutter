@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'window_content.dart';
 import 'models.dart';
 import 'rotated_wire_cube.dart';
+import 'custom_title_bar.dart';
 import 'dart:math';
 import 'package:flutter/src/widgets/_window.dart';
 
@@ -37,68 +38,80 @@ class RegularWindowContent extends StatelessWidget {
     final WindowSettings windowSettings = WindowSettingsAccessor.of(context);
 
     final child = Scaffold(
-      appBar: AppBar(title: Text('Regular Window')),
-      body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [RotatedWireCube(cubeColor: cubeColor)],
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    final UniqueKey key = UniqueKey();
-                    windowManager.add(
-                      KeyedWindow(
-                        key: key,
-                        controller: RegularWindowController(
-                          preferredSize: windowSettings.regularSize,
-                          delegate: CallbackRegularWindowControllerDelegate(
-                            onDestroyed: () => windowManager.remove(key),
-                          ),
-                          title: 'Regular',
-                        ),
+      body: Column(
+        children: [
+          // 自定义标题栏
+          RegularWindowTitleBar(
+            controller: window,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
+          // 主内容区域
+          Expanded(
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [RotatedWireCube(cubeColor: cubeColor)],
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          final UniqueKey key = UniqueKey();
+                          windowManager.add(
+                            KeyedWindow(
+                              key: key,
+                              controller: RegularWindowController(
+                                preferredSize: windowSettings.regularSize,
+                                delegate: CallbackRegularWindowControllerDelegate(
+                                  onDestroyed: () => windowManager.remove(key),
+                                ),
+                                title: 'Regular',
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Create Regular Window'),
                       ),
-                    );
-                  },
-                  child: const Text('Create Regular Window'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    final UniqueKey key = UniqueKey();
-                    windowManager.add(
-                      KeyedWindow(
-                        key: key,
-                        controller: DialogWindowController(
-                          preferredSize: windowSettings.dialogSize,
-                          delegate: CallbackDialogWindowControllerDelegate(
-                            onDestroyed: () => windowManager.remove(key),
-                          ),
-                          parent: window,
-                          title: 'Dialog',
-                        ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          final UniqueKey key = UniqueKey();
+                          windowManager.add(
+                            KeyedWindow(
+                              key: key,
+                              controller: DialogWindowController(
+                                preferredSize: windowSettings.dialogSize,
+                                delegate: CallbackDialogWindowControllerDelegate(
+                                  onDestroyed: () => windowManager.remove(key),
+                                ),
+                                parent: window,
+                                title: 'Dialog',
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Create Modal Dialog'),
                       ),
-                    );
-                  },
-                  child: const Text('Create Modal Dialog'),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'View #${window.rootView.viewId}\n'
-                  'Size: ${(windowSize.width).toStringAsFixed(1)}\u00D7${(windowSize.height).toStringAsFixed(1)}\n'
-                  'Device Pixel Ratio: $dpr',
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                      const SizedBox(height: 20),
+                      Text(
+                        'View #${window.rootView.viewId}\n'
+                        'Size: ${(windowSize.width).toStringAsFixed(1)}\u00D7${(windowSize.height).toStringAsFixed(1)}\n'
+                        'Device Pixel Ratio: $dpr',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
 

@@ -44,6 +44,9 @@ struct RegularWindowCreationRequest {
   WindowConstraints preferred_constraints;
   LPCWSTR title;
   HWND parent_or_null;
+  bool center;
+  bool isResizable;
+  bool isFullscreenAllMonitors;
 };
 
 struct DialogWindowCreationRequest {
@@ -51,6 +54,9 @@ struct DialogWindowCreationRequest {
   WindowConstraints preferred_constraints;
   LPCWSTR title;
   HWND parent_or_null;
+  bool center;
+  bool isResizable;
+  bool isFullscreenAllMonitors;
 };
 
 struct WindowsMessage {
@@ -73,11 +79,19 @@ struct ActualWindowSize {
   double width;
   double height;
 };
-
+struct ActualWindowPosition {
+  double x;
+  double y;
+};
 struct FullscreenRequest {
   bool fullscreen;
   bool has_display_id;
   FlutterEngineDisplayId display_id;
+};
+
+struct PositionRequest {
+  double x;
+  double y;
 };
 
 // A manager class for managing |HostWindow| instances.
@@ -169,6 +183,18 @@ void InternalFlutterWindows_WindowManager_SetFullscreen(
 
 FLUTTER_EXPORT
 bool InternalFlutterWindows_WindowManager_GetFullscreen(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_DragWindow(HWND hwnd, int32_t state);
+
+FLUTTER_EXPORT
+flutter::ActualWindowPosition
+InternalFlutterWindows_WindowManager_GetWindowPosition(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetPosition(
+    HWND hwnd,
+    const flutter::PositionRequest* request);
 }
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_MANAGER_H_

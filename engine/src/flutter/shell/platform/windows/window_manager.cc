@@ -19,7 +19,6 @@
 #include "shell/platform/windows/host_window.h"
 
 namespace flutter {
-
 WindowManager::WindowManager(FlutterWindowsEngine* engine) : engine_(engine) {}
 
 void WindowManager::Initialize(const WindowingInitRequest* request) {
@@ -106,7 +105,6 @@ std::optional<LRESULT> WindowManager::HandleMessage(HWND hwnd,
     return std::nullopt;
   }
 }
-
 }  // namespace flutter
 
 void InternalFlutterWindows_WindowManager_Initialize(
@@ -187,7 +185,38 @@ bool InternalFlutterWindows_WindowManager_GetFullscreen(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
     return window->GetFullscreen();
+    
   }
 
   return false;
+}
+
+void InternalFlutterWindows_WindowManager_DragWindow(HWND hwnd, int32_t state) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->DragWindow(state);
+  }
+}
+
+void InternalFlutterWindows_WindowManager_SetPosition(
+    HWND hwnd,
+    const flutter::PositionRequest* request) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->SetPosition(request->x, request->y);
+  }
+}
+
+flutter::ActualWindowPosition
+InternalFlutterWindows_WindowManager_GetWindowPosition(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  flutter::ActualWindowPosition result;
+  result.x = 0;
+  result.y = 0;
+  if (window) {
+    const flutter::Point point = window->GetPosition();
+    result.x = point.x();
+    result.y = point.y();
+  }
+  return result;
 }
