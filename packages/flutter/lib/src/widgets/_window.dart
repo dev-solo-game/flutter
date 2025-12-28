@@ -232,8 +232,8 @@ abstract class RegularWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   factory RegularWindowController({
-    bool center = false,
-    bool isResizable = false,
+    bool center = true,
+    bool isResizable = true,
     bool isFullscreenAllMonitors = false,
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
@@ -538,7 +538,7 @@ abstract class DialogWindowController extends BaseWindowController {
   ///
   /// {@macro flutter.widgets.windowing.experimental}
   factory DialogWindowController({
-    bool center = false,
+    bool center = true,
     bool isResizable = false,
     bool isFullscreenAllMonitors = false,
     Size? preferredSize,
@@ -829,8 +829,8 @@ abstract class WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-    bool center = false,
-    bool isResizable = false,
+    bool center = true,
+    bool isResizable = true,
     bool isFullscreenAllMonitors = false,
   });
 
@@ -848,7 +848,7 @@ abstract class WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = false,
+    bool center = true,
     bool isResizable = false,
     bool isFullscreenAllMonitors = false,
   });
@@ -900,8 +900,8 @@ class _WindowingOwnerUnsupported extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-    bool center = false,
-    bool isResizable = false,
+    bool center = true,
+    bool isResizable = true,
     bool isFullscreenAllMonitors = false,
   }) {
     throw UnsupportedError(errorMessage);
@@ -914,7 +914,7 @@ class _WindowingOwnerUnsupported extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = false,
+    bool center = true,
     bool isResizable = false,
     bool isFullscreenAllMonitors = false,
   }) {

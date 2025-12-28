@@ -205,7 +205,8 @@ class _WindowCreatorCard extends StatelessWidget {
                           ),
                           title: 'Regular',
                           preferredSize: windowSettings.regularSize,
-                          parent: windowManager.windows[0].controller,
+                          isResizable: false,
+                          //parent: windowManager.windows[0].controller,
                         ),
                       ),
                     );
@@ -225,7 +226,10 @@ class _WindowCreatorCard extends StatelessWidget {
                           ),
                           title: 'Modeless Dialog',
                           preferredSize: windowSettings.dialogSize,
-                          parent: windowManager.windows[0].controller,
+                          //parent: windowManager.windows[0].controller,
+                          isFullscreenAllMonitors: false,
+                          center: false,
+                          isResizable: false,
                         ),
                       ),
                     );

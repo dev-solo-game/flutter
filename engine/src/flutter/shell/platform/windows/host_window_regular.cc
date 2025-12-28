@@ -12,7 +12,10 @@ HostWindowRegular::HostWindowRegular(WindowManager* window_manager,
                                      const WindowSizeRequest& preferred_size,
                                      const BoxConstraints& constraints,
                                      LPCWSTR title,
-                                     HWND parent)
+                                     HWND parent,
+                                     bool center,
+                                     bool is_resizable,
+                                     bool is_fullscreen_monitors)
 
     : HostWindow(window_manager,
                  engine,
@@ -22,7 +25,10 @@ HostWindowRegular::HostWindowRegular(WindowManager* window_manager,
                  constraints,
                  GetInitialRect(engine, preferred_size, constraints),
                  title,
-                 parent) {
+                 parent,
+                 center,
+                 is_resizable,
+                 is_fullscreen_monitors) {
   // WS_EX_TOOLWINDOW | WS_EX_TOPMOST
   // TODO(knopp): Investigate sizing the window to its content with the help of
   // https://github.com/flutter/flutter/pull/173610.

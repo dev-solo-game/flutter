@@ -19,7 +19,10 @@ class HostWindowDialog : public HostWindow {
                    const WindowSizeRequest& preferred_size,
                    const BoxConstraints& constraints,
                    LPCWSTR title,
-                   std::optional<HWND> const& owner_window);
+                   std::optional<HWND> const& owner_window,
+                   bool center,
+                   bool is_resizable,
+                   bool is_fullscreen_monitors);
 
   void SetFullscreen(bool fullscreen,
                      std::optional<FlutterEngineDisplayId> display_id) override;

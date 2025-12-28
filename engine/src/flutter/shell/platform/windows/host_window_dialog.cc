@@ -37,7 +37,10 @@ HostWindowDialog::HostWindowDialog(WindowManager* window_manager,
                                    const WindowSizeRequest& preferred_size,
                                    const BoxConstraints& constraints,
                                    LPCWSTR title,
-                                   std::optional<HWND> const& owner_window)
+                                   std::optional<HWND> const& owner_window,
+                                   bool center,
+                                   bool is_resizable,
+                                   bool is_fullscreen_monitors)
     : HostWindow(
           window_manager,
           engine,
@@ -47,7 +50,10 @@ HostWindowDialog::HostWindowDialog(WindowManager* window_manager,
           constraints,
           GetInitialRect(engine, preferred_size, constraints, owner_window),
           title,
-          owner_window) {
+          owner_window,
+          center,
+          is_resizable,
+          is_fullscreen_monitors) {
   auto hwnd = window_handle_;
   if (owner_window == nullptr) {
     if (HMENU hMenu = GetSystemMenu(hwnd, FALSE)) {

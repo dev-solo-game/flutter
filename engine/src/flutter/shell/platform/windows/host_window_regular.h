@@ -16,7 +16,10 @@ class HostWindowRegular : public HostWindow {
                     const WindowSizeRequest& preferred_size,
                     const BoxConstraints& constraints,
                     LPCWSTR title,
-                    HWND parent);
+                    HWND parent,
+                    bool center,
+                    bool is_resizable,
+                    bool is_fullscreen_monitors);
 
  private:
   static Rect GetInitialRect(FlutterWindowsEngine* engine,
