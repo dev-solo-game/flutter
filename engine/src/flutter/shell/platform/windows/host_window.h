@@ -210,6 +210,7 @@ class HostWindow {
                              WPARAM wParam,
                              LPARAM lParam,
                              int titleBarHeightLogical);
+  static void SetBackgroundColor(HWND hwnd );
 
   // Controller for this window.
   WindowManager* const window_manager_ = nullptr;

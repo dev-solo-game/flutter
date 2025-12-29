@@ -521,6 +521,50 @@ LRESULT HostWindow::OnNcHitTest(HWND hwnd,
   return HTCLIENT;
 }
 
+void HostWindow::SetBackgroundColor(HWND hwnd) {
+  const HINSTANCE hModule = LoadLibrary(TEXT("user32.dll"));
+  if (hModule) {
+    typedef enum _ACCENT_STATE {
+      ACCENT_DISABLED = 0,
+      ACCENT_ENABLE_GRADIENT = 1,
+      ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
+      ACCENT_ENABLE_BLURBEHIND = 3,
+      ACCENT_ENABLE_ACRYLICBLURBEHIND = 4,
+      ACCENT_ENABLE_HOSTBACKDROP = 5,
+      ACCENT_INVALID_STATE = 6
+    } ACCENT_STATE;
+    struct ACCENTPOLICY {
+      int nAccentState;
+      int nFlags;
+      int nColor;
+      int nAnimationId;
+    };
+    struct WINCOMPATTRDATA {
+      int nAttribute;
+      PVOID pData;
+      ULONG ulDataSize;
+    };
+    typedef BOOL(WINAPI * pSetWindowCompositionAttribute)(HWND,
+                                                          WINCOMPATTRDATA*);
+    const pSetWindowCompositionAttribute SetWindowCompositionAttribute =
+        (pSetWindowCompositionAttribute)GetProcAddress(
+            hModule, "SetWindowCompositionAttribute");
+    if (SetWindowCompositionAttribute) {
+      // int32_t accent_state = isTransparent ? ACCENT_ENABLE_TRANSPARENTGRADIENT
+      //                                      : ACCENT_ENABLE_GRADIENT;
+      int32_t accent_state = ACCENT_ENABLE_TRANSPARENTGRADIENT;
+      ACCENTPOLICY policy = {
+        accent_state, 2,
+        ((0 << 24) + (128 << 16) +
+         (128 << 8) + (128)),
+        0};
+      WINCOMPATTRDATA data = {19, &policy, sizeof(policy)};
+      SetWindowCompositionAttribute(hwnd, &data);
+    }
+    FreeLibrary(hModule);
+  }
+}
+
 void HostWindow::MoveWindowXY(double x, double y) {
   RECT window_rect;
   if (GetWindowRect(window_handle_, &window_rect)) {
