@@ -187,7 +187,6 @@ bool InternalFlutterWindows_WindowManager_GetFullscreen(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
     return window->GetFullscreen();
-    
   }
 
   return false;

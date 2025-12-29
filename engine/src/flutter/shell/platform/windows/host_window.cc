@@ -550,14 +550,12 @@ void HostWindow::SetBackgroundColor(HWND hwnd) {
         (pSetWindowCompositionAttribute)GetProcAddress(
             hModule, "SetWindowCompositionAttribute");
     if (SetWindowCompositionAttribute) {
-      // int32_t accent_state = isTransparent ? ACCENT_ENABLE_TRANSPARENTGRADIENT
+      // int32_t accent_state = isTransparent ?
+      // ACCENT_ENABLE_TRANSPARENTGRADIENT
       //                                      : ACCENT_ENABLE_GRADIENT;
       int32_t accent_state = ACCENT_ENABLE_TRANSPARENTGRADIENT;
-      ACCENTPOLICY policy = {
-        accent_state, 2,
-        ((0 << 24) + (128 << 16) +
-         (128 << 8) + (128)),
-        0};
+      ACCENTPOLICY policy = {accent_state, 2,
+                             ((0 << 24) + (128 << 16) + (128 << 8) + (128)), 0};
       WINCOMPATTRDATA data = {19, &policy, sizeof(policy)};
       SetWindowCompositionAttribute(hwnd, &data);
     }
