@@ -34,26 +34,22 @@ namespace flutter {
 
 HostWindowDialog::HostWindowDialog(WindowManager* window_manager,
                                    FlutterWindowsEngine* engine,
+                                   const WindowPositionRequest& init_position,
                                    const WindowSizeRequest& preferred_size,
                                    const BoxConstraints& constraints,
                                    LPCWSTR title,
-                                   std::optional<HWND> const& owner_window,
-                                   bool center,
-                                   bool is_resizable,
-                                   bool is_fullscreen_monitors)
+                                   std::optional<HWND> const& owner_window)
     : HostWindow(
           window_manager,
           engine,
           WindowArchetype::kDialog,
           GetWindowStyleForDialog(owner_window),
           GetExtendedWindowStyleForDialog(owner_window),
+          init_position,
           constraints,
           GetInitialRect(engine, preferred_size, constraints, owner_window),
           title,
-          owner_window,
-          center,
-          is_resizable,
-          is_fullscreen_monitors) {
+          owner_window) {
   auto hwnd = window_handle_;
   if (owner_window == nullptr) {
     if (HMENU hMenu = GetSystemMenu(hwnd, FALSE)) {

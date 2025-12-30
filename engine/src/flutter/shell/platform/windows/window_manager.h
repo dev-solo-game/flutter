@@ -18,7 +18,6 @@
 #include "flutter/shell/platform/embedder/embedder.h"
 
 namespace flutter {
-
 class FlutterWindowsEngine;
 class HostWindow;
 
@@ -38,25 +37,32 @@ struct WindowConstraints {
   double view_max_height;
 };
 
+struct WindowPositionRequest {
+  bool has_pos = false;
+  double x;
+  double y;
+};
+
+struct WindowBoundsRequest {
+  WindowPositionRequest position;
+  WindowSizeRequest size;
+};
+
 // Sent by the framework to request a new window be created.
 struct RegularWindowCreationRequest {
+  WindowPositionRequest initial_position;
   WindowSizeRequest preferred_size;
   WindowConstraints preferred_constraints;
   LPCWSTR title;
   HWND parent_or_null;
-  bool center;
-  bool isResizable;
-  bool isFullscreenAllMonitors;
 };
 
 struct DialogWindowCreationRequest {
+  WindowPositionRequest initial_position;
   WindowSizeRequest preferred_size;
   WindowConstraints preferred_constraints;
   LPCWSTR title;
   HWND parent_or_null;
-  bool center;
-  bool isResizable;
-  bool isFullscreenAllMonitors;
 };
 
 struct WindowsMessage {
@@ -79,19 +85,23 @@ struct ActualWindowSize {
   double width;
   double height;
 };
+
 struct ActualWindowPosition {
   double x;
   double y;
 };
+
+struct ActualWindowBounds {
+  double x;
+  double y;
+  double width;
+  double height;
+};
+
 struct FullscreenRequest {
   bool fullscreen;
   bool has_display_id;
   FlutterEngineDisplayId display_id;
-};
-
-struct PositionRequest {
-  double x;
-  double y;
 };
 
 // A manager class for managing |HostWindow| instances.
@@ -135,11 +145,9 @@ class WindowManager {
 
   FML_DISALLOW_COPY_AND_ASSIGN(WindowManager);
 };
-
 }  // namespace flutter
 
 extern "C" {
-
 FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_Initialize(
     int64_t engine_id,
@@ -188,13 +196,52 @@ FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_DragWindow(HWND hwnd, int32_t state);
 
 FLUTTER_EXPORT
-flutter::ActualWindowPosition
-InternalFlutterWindows_WindowManager_GetWindowPosition(HWND hwnd);
+flutter::ActualWindowBounds
+InternalFlutterWindows_WindowManager_GetWindowBounds(HWND hwnd);
 
 FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetPosition(
+void InternalFlutterWindows_WindowManager_SetBounds(
     HWND hwnd,
-    const flutter::PositionRequest* request);
+    const flutter::WindowBoundsRequest* request);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_FocusWindow(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetNoFrame(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_FullOnMonitors(HWND hwnd);
+
+FLUTTER_EXPORT
+bool InternalFlutterWindows_WindowManager_IsAlwaysOnTop(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetAlwaysOnTop(HWND hwnd,
+                                                         bool is_always_on_top);
+
+FLUTTER_EXPORT
+bool InternalFlutterWindows_WindowManager_IsResizable(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetResizable(HWND hwnd,
+                                                       bool is_resizable);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd);
+
+FLUTTER_EXPORT
+bool InternalFlutterWindows_WindowManager_IsMinimized(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_Restore(HWND hwnd);
+
+FLUTTER_EXPORT
+bool InternalFlutterWindows_WindowManager_IsSkipTaskbar(HWND hwnd);
+
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetSkipTaskbar(HWND hwnd,
+                                                         bool is_skip_taskbar);
 }
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_MANAGER_H_

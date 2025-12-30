@@ -16,13 +16,11 @@ class HostWindowDialog : public HostWindow {
   // This also affects the dialog window's styling.
   HostWindowDialog(WindowManager* window_manager,
                    FlutterWindowsEngine* engine,
+                   const WindowPositionRequest& init_position,
                    const WindowSizeRequest& preferred_size,
                    const BoxConstraints& constraints,
                    LPCWSTR title,
-                   std::optional<HWND> const& owner_window,
-                   bool center,
-                   bool is_resizable,
-                   bool is_fullscreen_monitors);
+                   std::optional<HWND> const& owner_window);
 
   void SetFullscreen(bool fullscreen,
                      std::optional<FlutterEngineDisplayId> display_id) override;

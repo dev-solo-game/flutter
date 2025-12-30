@@ -9,26 +9,22 @@
 namespace flutter {
 HostWindowRegular::HostWindowRegular(WindowManager* window_manager,
                                      FlutterWindowsEngine* engine,
+                                     const WindowPositionRequest& init_position,
                                      const WindowSizeRequest& preferred_size,
                                      const BoxConstraints& constraints,
                                      LPCWSTR title,
-                                     HWND parent,
-                                     bool center,
-                                     bool is_resizable,
-                                     bool is_fullscreen_monitors)
+                                     HWND parent)
 
     : HostWindow(window_manager,
                  engine,
                  WindowArchetype::kRegular,
                  WS_OVERLAPPEDWINDOW,
                  0,
+                 init_position,
                  constraints,
                  GetInitialRect(engine, preferred_size, constraints),
                  title,
-                 parent,
-                 center,
-                 is_resizable,
-                 is_fullscreen_monitors) {
+                 parent) {
   // WS_EX_TOOLWINDOW | WS_EX_TOPMOST
   // TODO(knopp): Investigate sizing the window to its content with the help of
   // https://github.com/flutter/flutter/pull/173610.

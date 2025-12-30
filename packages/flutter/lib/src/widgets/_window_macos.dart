@@ -81,9 +81,7 @@ class WindowingOwnerMacOS extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-            bool center = false,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   }) {
     final res = RegularWindowControllerMacOS(
       owner: this,
@@ -102,9 +100,7 @@ class WindowingOwnerMacOS extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = false,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   }) {
     final res = DialogWindowControllerMacOS(
       owner: this,
@@ -313,26 +309,28 @@ class RegularWindowControllerMacOS extends RegularWindowController {
   String get title => _MacOSPlatformInterface.getTitle(getWindowHandle());
 
   @override
-  Offset get position => Offset(0,0); //TODO
+  Offset get position => Offset(0, 0); //TODO
 
   @override
-  void show() {
-    //TODO
-  }
-
+  void show() {}
   @override
-  void hide() {
-    //TODO
-  }
-
-    @override
-  void dragWindow(int state){
-    //TODO
-  }
+  void hide() {}
   @override
-  void setPosition(double x ,double y){
-    //TODO
-  }
+  void dragWindow(int state) {}
+  @override
+  void focus() {}
+  @override
+  void setBounds(Offset? position, Size? size) {}
+  @override
+  void setAlwaysOnTop(bool alwaysOnTop) {}
+  @override
+  void fullOnMonitors() {}
+  @override
+  void setNoFrame() {}
+  @override
+  void setResizable(bool resizable) {}
+  @override
+  void setSkipTaskbar(bool skipTaskbar) {}
 }
 
 /// Implementation of [DialogWindowController] for the macOS platform.
@@ -463,24 +461,28 @@ class DialogWindowControllerMacOS extends DialogWindowController {
       _MacOSPlatformInterface.unminimize(getWindowHandle());
     }
   }
-  @override
-  void show() {
-    //TODO
-  }
 
   @override
-  void hide() {
-    //TODO
-  }
-
-    @override
-  void dragWindow(int state){
-    //TODO
-  }
+  void show() {}
   @override
-  void setPosition(double x ,double y){
-    //TODO
-  }
+  void hide() {}
+  @override
+  void dragWindow(int state) {}
+  @override
+  void focus() {}
+  @override
+  void setBounds(Offset? position, Size? size) {}
+  @override
+  void setAlwaysOnTop(bool alwaysOnTop) {}
+  @override
+  void fullOnMonitors() {}
+  @override
+  void setNoFrame() {}
+  @override
+  void setResizable(bool resizable) {}
+  @override
+  void setSkipTaskbar(bool skipTaskbar) {}
+
   @override
   bool get isMinimized {
     _ensureNotDestroyed();
@@ -500,7 +502,7 @@ class DialogWindowControllerMacOS extends DialogWindowController {
   String get title => _MacOSPlatformInterface.getTitle(getWindowHandle());
 
   @override
-  Offset get position => Offset(0,0); //TODO
+  Offset get position => Offset(0, 0); //TODO
 
   @override
   final BaseWindowController? parent;

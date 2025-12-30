@@ -13,13 +13,11 @@ class HostWindowRegular : public HostWindow {
   // Creates a regular window.
   HostWindowRegular(WindowManager* window_manager,
                     FlutterWindowsEngine* engine,
+                    const WindowPositionRequest& init_position,
                     const WindowSizeRequest& preferred_size,
                     const BoxConstraints& constraints,
                     LPCWSTR title,
-                    HWND parent,
-                    bool center,
-                    bool is_resizable,
-                    bool is_fullscreen_monitors);
+                    HWND parent);
 
  private:
   static Rect GetInitialRect(FlutterWindowsEngine* engine,

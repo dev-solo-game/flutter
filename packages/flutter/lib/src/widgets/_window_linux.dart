@@ -560,9 +560,7 @@ class WindowingOwnerLinux extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-    bool center = false,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
     required RegularWindowControllerDelegate delegate,
   }) {
     final controller = RegularWindowControllerLinux(
@@ -584,9 +582,7 @@ class WindowingOwnerLinux extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = false,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   }) {
     final controller = DialogWindowControllerLinux(
       owner: this,
@@ -710,7 +706,7 @@ class RegularWindowControllerLinux extends RegularWindowController {
 
   @override
   @internal
-  Offset get position => Offset(0,0); //TODO
+  Offset get position => Offset(0, 0); //TODO
 
   @override
   @internal
@@ -788,28 +784,37 @@ class RegularWindowControllerLinux extends RegularWindowController {
       _window.unfullscreen();
     }
   }
-  @override
-  @internal
-  void show() {
-    //TODO
-  }
 
   @override
   @internal
-  void hide() {
-    //TODO
-  }
+  void show() {}
   @override
   @internal
-  void dragWindow(int state){
-    //TODO
-  }
-
+  void hide() {}
   @override
   @internal
-  void setPosition(double x ,double y){
-    //TODO
-  }
+  void dragWindow(int state) {}
+  @override
+  @internal
+  void focus() {}
+  @override
+  @internal
+  void setBounds(Offset? position, Size? size) {}
+  @override
+  @internal
+  void setAlwaysOnTop(bool alwaysOnTop) {}
+  @override
+  @internal
+  void fullOnMonitors() {}
+  @override
+  @internal
+  void setNoFrame() {}
+  @override
+  @internal
+  void setResizable(bool resizable) {}
+  @override
+  @internal
+  void setSkipTaskbar(bool skipTaskbar) {}
 }
 
 /// Implementation of [DialogWindowController] for the Linux platform.
@@ -925,7 +930,7 @@ class DialogWindowControllerLinux extends DialogWindowController {
 
   @override
   @internal
-  Offset get position => Offset(0,0); //TODO
+  Offset get position => Offset(0, 0); //TODO
 
   @override
   @internal
@@ -974,26 +979,35 @@ class DialogWindowControllerLinux extends DialogWindowController {
       _window.deiconify();
     }
   }
-  @override
-  @internal
-  void show() {
-    //TODO
-  }
 
   @override
   @internal
-  void hide() {
-    //TODO
-  }
+  void show() {}
   @override
   @internal
-  void dragWindow(int state){
-    //TODO
-  }
-
+  void hide() {}
   @override
   @internal
-  void setPosition(double x ,double y){
-    //TODO
-  }
+  void dragWindow(int state) {}
+  @override
+  @internal
+  void focus() {}
+  @override
+  @internal
+  void setBounds(Offset? position, Size? size) {}
+  @override
+  @internal
+  void setAlwaysOnTop(bool alwaysOnTop) {}
+  @override
+  @internal
+  void fullOnMonitors() {}
+  @override
+  @internal
+  void setNoFrame() {}
+  @override
+  @internal
+  void setResizable(bool resizable) {}
+  @override
+  @internal
+  void setSkipTaskbar(bool skipTaskbar) {}
 }

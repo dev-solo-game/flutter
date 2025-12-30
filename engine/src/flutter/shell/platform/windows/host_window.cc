@@ -244,34 +244,28 @@ namespace flutter {
 std::unique_ptr<HostWindow> HostWindow::CreateRegularWindow(
     WindowManager* window_manager,
     FlutterWindowsEngine* engine,
+    const WindowPositionRequest& init_position,
     const WindowSizeRequest& preferred_size,
     const WindowConstraints& preferred_constraints,
     LPCWSTR title,
-    HWND parent,
-    bool center,
-    bool is_resizable,
-    bool is_fullscreen_monitors) {
+    HWND parent) {
   return std::unique_ptr<HostWindow>(new HostWindowRegular(
-      window_manager, engine, preferred_size,
-      FromWindowConstraints(preferred_constraints), title, parent, center,
-      is_resizable, is_fullscreen_monitors));
+      window_manager, engine, init_position, preferred_size,
+      FromWindowConstraints(preferred_constraints), title, parent));
 }
 
 std::unique_ptr<HostWindow> HostWindow::CreateDialogWindow(
     WindowManager* window_manager,
     FlutterWindowsEngine* engine,
+    const WindowPositionRequest& init_position,
     const WindowSizeRequest& preferred_size,
     const WindowConstraints& preferred_constraints,
     LPCWSTR title,
-    HWND parent,
-    bool center,
-    bool is_resizable,
-    bool is_fullscreen_monitors) {
-  return std::unique_ptr<HostWindow>(
-      new HostWindowDialog(window_manager, engine, preferred_size,
-                           FromWindowConstraints(preferred_constraints), title,
-                           parent ? parent : std::optional<HWND>(), center,
-                           is_resizable, is_fullscreen_monitors));
+    HWND parent) {
+  return std::unique_ptr<HostWindow>(new HostWindowDialog(
+      window_manager, engine, init_position, preferred_size,
+      FromWindowConstraints(preferred_constraints), title,
+      parent ? parent : std::optional<HWND>()));
 }
 
 HostWindow::HostWindow(WindowManager* window_manager,
@@ -279,13 +273,11 @@ HostWindow::HostWindow(WindowManager* window_manager,
                        WindowArchetype archetype,
                        DWORD window_style,
                        DWORD extended_window_style,
+                       const WindowPositionRequest& init_position,
                        const BoxConstraints& box_constraints,
                        Rect const initial_window_rect,
                        LPCWSTR title,
-                       std::optional<HWND> const& owner_window,
-                       bool center,
-                       bool is_resizable,
-                       bool is_fullscreen_monitors)
+                       std::optional<HWND> const& owner_window)
     : window_manager_(window_manager),
       engine_(engine),
       archetype_(archetype),
@@ -325,8 +317,7 @@ HostWindow::HostWindow(WindowManager* window_manager,
 
     FML_CHECK(RegisterClassEx(&window_class));
   }
-  // extended_window_style = extended_window_style & (~(WS_THICKFRAME |
-  // WS_MAXIMIZEBOX));
+
   //  Create the native window.
   window_handle_ = CreateWindowEx(
       extended_window_style, kWindowClassName, title, window_style,
@@ -335,31 +326,22 @@ HostWindow::HostWindow(WindowManager* window_manager,
       owner_window ? *owner_window : nullptr, nullptr, GetModuleHandle(nullptr),
       engine->windows_proc_table().get());
   FML_CHECK(window_handle_ != nullptr);
-  UpdateResizable(is_resizable);
-  if (is_fullscreen_monitors) {
-    // update full monitors
-    UpdateFullScreenMonitors();
-  } else {
-    if (center) {
-      CenterWindowOnMonitor(window_handle_);
-    } else {
-      // Adjust the window position so its origin aligns with the top-left
-      // corner of the window frame, not the window rectangle (which includes
-      // the drop-shadow). This adjustment must be done post-creation since the
-      // frame rectangle is only available after the window has been created.
-      RECT frame_rect;
-      DwmGetWindowAttribute(window_handle_, DWMWA_EXTENDED_FRAME_BOUNDS,
-                            &frame_rect, sizeof(frame_rect));
-      RECT window_rect;
-      GetWindowRect(window_handle_, &window_rect);
-      LONG const left_dropshadow_width = frame_rect.left - window_rect.left;
-      LONG const top_dropshadow_height = window_rect.top - frame_rect.top;
-      SetWindowPos(
-          window_handle_, nullptr, window_rect.left - left_dropshadow_width,
-          window_rect.top - top_dropshadow_height, 0, 0,
-          SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    }
-  }
+
+  // Adjust the window position so its origin aligns with the top-left
+  // corner of the window frame, not the window rectangle (which includes
+  // the drop-shadow). This adjustment must be done post-creation since the
+  // frame rectangle is only available after the window has been created.
+  RECT frame_rect;
+  DwmGetWindowAttribute(window_handle_, DWMWA_EXTENDED_FRAME_BOUNDS,
+                        &frame_rect, sizeof(frame_rect));
+  RECT window_rect;
+  GetWindowRect(window_handle_, &window_rect);
+  LONG const left_dropshadow_width = frame_rect.left - window_rect.left;
+  LONG const top_dropshadow_height = window_rect.top - frame_rect.top;
+  SetWindowPos(window_handle_, nullptr,
+               window_rect.left - left_dropshadow_width,
+               window_rect.top - top_dropshadow_height, 0, 0,
+               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
   UpdateTheme(window_handle_);
 
   SetChildContent(view_controller_->view()->GetWindowHandle(), window_handle_);
@@ -521,34 +503,29 @@ LRESULT HostWindow::OnNcHitTest(HWND hwnd,
   return HTCLIENT;
 }
 
-void HostWindow::MoveWindowXY(double x, double y) {
-  RECT window_rect;
-  if (GetWindowRect(window_handle_, &window_rect)) {
-    // Get DPI scale factor to convert logical pixels to physical pixels
-    UINT const dpi = GetDpiForHWND(window_handle_);
-    double const scale_factor =
-        static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
-
-    // Convert logical delta to physical delta
-    LONG const physical_x = static_cast<LONG>(x * scale_factor);
-    LONG const physical_y = static_cast<LONG>(y * scale_factor);
-
-    LONG new_x = window_rect.left + physical_x;
-    LONG new_y = window_rect.top + physical_y;
-    SetWindowPos(window_handle_, nullptr, new_x, new_y, 0, 0,
-                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-  }
-}
-
-void HostWindow::SetPosition(double x, double y) {
+void HostWindow::SetBounds(const flutter::WindowBoundsRequest* request) {
   // Get DPI scale factor to convert logical pixels to physical pixels
   UINT const dpi = GetDpiForHWND(window_handle_);
   double const scale_factor =
       static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
 
   // Convert logical position to physical position
-  int const physical_x = static_cast<int>(x * scale_factor);
-  int const physical_y = static_cast<int>(y * scale_factor);
+  int const physical_x = static_cast<int>(request->position.x * scale_factor);
+  int const physical_y = static_cast<int>(request->position.y * scale_factor);
+
+  // Convert logical size to physical size
+  int const physical_width =
+      static_cast<int>(request->size.preferred_view_width * scale_factor);
+  int const physical_height =
+      static_cast<int>(request->size.preferred_view_height * scale_factor);
+
+  UINT flags = SWP_NOZORDER | SWP_NOACTIVATE;
+  if (!request->position.has_pos) {
+    flags |= SWP_NOMOVE;
+  }
+  if (!request->size.has_preferred_view_size) {
+    flags |= SWP_NOSIZE;
+  }
 
   // Account for drop shadow offset when setting position.
   // The user expects to set the visible frame position, not the window rect.
@@ -561,16 +538,23 @@ void HostWindow::SetPosition(double x, double y) {
     // Calculate shadow offset
     LONG const left_shadow = frame_rect.left - window_rect.left;
     LONG const top_shadow = frame_rect.top - window_rect.top;
+    LONG const right_shadow = window_rect.right - frame_rect.right;
+    LONG const bottom_shadow = window_rect.bottom - frame_rect.bottom;
 
-    // Adjust position to account for shadow
-    int new_x = physical_x - static_cast<int>(left_shadow);
-    int new_y = physical_y - static_cast<int>(top_shadow);
-    SetWindowPos(window_handle_, nullptr, new_x, new_y, 0, 0,
-                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    // Adjust position and size to account for shadow
+    int const new_x = physical_x - static_cast<int>(left_shadow);
+    int const new_y = physical_y - static_cast<int>(top_shadow);
+    int const new_width =
+        physical_width + static_cast<int>(left_shadow + right_shadow);
+    int const new_height =
+        physical_height + static_cast<int>(top_shadow + bottom_shadow);
+
+    SetWindowPos(window_handle_, nullptr, new_x, new_y, new_width, new_height,
+                 flags);
   } else {
     // Fallback without shadow adjustment
-    SetWindowPos(window_handle_, nullptr, physical_x, physical_y, 0, 0,
-                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(window_handle_, nullptr, physical_x, physical_y,
+                 physical_width, physical_height, flags);
   }
 }
 
@@ -599,6 +583,41 @@ Point HostWindow::GetPosition() {
   }
 
   return Point(0, 0);
+}
+
+Rect HostWindow::GetBounds() {
+  // Get DPI scale factor to convert physical pixels to logical pixels
+  UINT const dpi = GetDpiForHWND(window_handle_);
+  double const scale_factor =
+      static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
+
+  // Use DWMWA_EXTENDED_FRAME_BOUNDS to get the visible frame bounds
+  // (excluding drop shadow), which matches what the user expects.
+  RECT frame_rect;
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle_,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect)))) {
+    // Convert physical bounds to logical bounds
+    return Rect(Point(static_cast<double>(frame_rect.left) / scale_factor,
+                      static_cast<double>(frame_rect.top) / scale_factor),
+                Size(static_cast<double>(frame_rect.right - frame_rect.left) /
+                         scale_factor,
+                     static_cast<double>(frame_rect.bottom - frame_rect.top) /
+                         scale_factor));
+  }
+
+  // Fallback to window rect if DWM fails
+  RECT window_rect;
+  if (GetWindowRect(window_handle_, &window_rect)) {
+    return Rect(Point(static_cast<double>(window_rect.left) / scale_factor,
+                      static_cast<double>(window_rect.top) / scale_factor),
+                Size(static_cast<double>(window_rect.right - window_rect.left) /
+                         scale_factor,
+                     static_cast<double>(window_rect.bottom - window_rect.top) /
+                         scale_factor));
+  }
+
+  return Rect(Point(0, 0), Size(0, 0));
 }
 
 void HostWindow::DragWindow(int state) {
@@ -641,8 +660,7 @@ void HostWindow::DragWindow(int state) {
   }
 }
 
-// TODO
-void HostWindow::UpdateFullScreenMonitors() {
+void HostWindow::SetNoFrame() {
   WINDOWINFO window_info = {.cbSize = sizeof(WINDOWINFO)};
   GetWindowInfo(window_handle_, &window_info);
   SetWindowLong(window_handle_, GWL_STYLE,
@@ -652,16 +670,9 @@ void HostWindow::UpdateFullScreenMonitors() {
       window_handle_, GWL_EXSTYLE,
       window_info.dwExStyle & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE |
                                 WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
+}
 
-  // topmost
-  SetWindowPos(window_handle_, HWND_TOPMOST, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE);
-  // We call SetWindowPos first to set the window flags immediately. This
-  // makes it so that the WM_GETMINMAXINFO gets called with the correct
-  // window
-  // and content sizes.
-  SetWindowPos(window_handle_, NULL, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+void HostWindow::FullOnMonitors() {
   double const virtual_screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
   double const virtual_screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
   SetWindowPos(window_handle_, nullptr, 0, 0, virtual_screen_width,
@@ -669,17 +680,35 @@ void HostWindow::UpdateFullScreenMonitors() {
                SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
-void HostWindow::UpdateResizable(bool is_resizable) {
-  is_resizable_ = is_resizable;
-  WINDOWINFO window_info = {.cbSize = sizeof(WINDOWINFO)};
-  GetWindowInfo(window_handle_, &window_info);
-  if (!is_resizable) {
-    SetWindowLong(window_handle_, GWL_STYLE,
-                  window_info.dwStyle & ~(WS_THICKFRAME | WS_MAXIMIZEBOX));
-  }
+bool HostWindow::IsAlwaysOnTop() const {
+  DWORD dwExStyle = GetWindowLong(GetWindowHandle(), GWL_EXSTYLE);
+  return (dwExStyle & WS_EX_TOPMOST) != 0;
 }
 
-void HostWindow::CenterWindowOnMonitor(HWND hwnd) {
+void HostWindow::SetAlwaysOnTop(bool is_always_on_top) {
+  bool isAlwaysOnTop = is_always_on_top;
+  SetWindowPos(GetWindowHandle(), isAlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST,
+               0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+}
+
+bool HostWindow::IsResizable() const {
+  return is_resizable_;
+}
+
+void HostWindow::SetResizable(bool is_resizable) {
+  is_resizable_ = is_resizable;
+  HWND hWnd = GetWindowHandle();
+  DWORD gwlStyle = GetWindowLong(hWnd, GWL_STYLE);
+  if (is_resizable_) {
+    gwlStyle |= WS_THICKFRAME;
+  } else {
+    gwlStyle &= ~WS_THICKFRAME;
+  }
+  ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);
+}
+
+void HostWindow::CenterWindowOnMonitor() {
+  HWND hwnd = GetWindowHandle();
   MonitorData monitor_data = GetMonitorUnderMouse();
   if (!hwnd || !monitor_data.monitor) {
     return;
@@ -709,6 +738,59 @@ void HostWindow::CenterWindowOnMonitor(HWND hwnd) {
 
   SetWindowPos(hwnd, nullptr, final_x, final_y, 0, 0,
                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+}
+
+bool HostWindow::IsMinimized() {
+  HWND mainWindow = GetWindowHandle();
+  WINDOWPLACEMENT windowPlacement;
+  GetWindowPlacement(mainWindow, &windowPlacement);
+
+  return windowPlacement.showCmd == SW_SHOWMINIMIZED;
+}
+void HostWindow::Restore() {
+  HWND mainWindow = GetWindowHandle();
+  WINDOWPLACEMENT windowPlacement;
+  GetWindowPlacement(mainWindow, &windowPlacement);
+
+  if (windowPlacement.showCmd != SW_NORMAL) {
+    PostMessage(mainWindow, WM_SYSCOMMAND, SC_RESTORE, 0);
+  }
+}
+void HostWindow::FocusWindow() {
+  HWND hWnd = GetWindowHandle();
+  if (IsMinimized()) {
+    Restore();
+  }
+
+  ::SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+  SetForegroundWindow(hWnd);
+}
+
+bool HostWindow::IsSkipTaskbar() const {
+  return is_skip_taskbar_;
+}
+
+void HostWindow::SetSkipTaskbar(bool is_skip_taskbar) {
+  is_skip_taskbar_ = is_skip_taskbar;
+  if (!task_bar_list_) {
+    HRESULT hr =
+        ::CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER,
+                           IID_PPV_ARGS(&task_bar_list_));
+    if (SUCCEEDED(hr) && FAILED(task_bar_list_->HrInit())) {
+      task_bar_list_ = nullptr;
+    }
+  }
+
+  if (task_bar_list_) {
+    HWND hWnd = GetWindowHandle();
+    LPVOID lp = NULL;
+    CoInitialize(lp);
+    task_bar_list_->HrInit();
+    if (!is_skip_taskbar)
+      task_bar_list_->AddTab(hWnd);
+    else
+      task_bar_list_->DeleteTab(hWnd);
+  }
 }
 
 LRESULT HostWindow::HandleMessage(HWND hwnd,

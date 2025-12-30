@@ -29,13 +29,23 @@ void WindowManager::Initialize(const WindowingInitRequest* request) {
 FlutterViewId WindowManager::CreateRegularWindow(
     const RegularWindowCreationRequest* request) {
   auto window = HostWindow::CreateRegularWindow(
-      this, engine_, request->preferred_size, request->preferred_constraints,
-      request->title, request->parent_or_null, request->center,
-      request->isResizable, request->isFullscreenAllMonitors);
+      this, engine_, request->initial_position, request->preferred_size,
+      request->preferred_constraints, request->title, request->parent_or_null);
   if (!window || !window->GetWindowHandle()) {
     FML_LOG(ERROR) << "Failed to create host window";
     return -1;
   }
+  // window->SetNoFrame();
+  // window->FullOnMonitors();
+  // window->SetAlwaysOnTop(true);
+  // if (request->center) {
+  //   window->CenterWindowOnMonitor();
+  // } else {
+  //   window->SetPosition(request->initial_position.x,
+  //                       request->initial_position.y);
+  // }
+  // window->SetSkipTaskbar(request->isSkipTaskbar);
+  // window->SetResizable(request->isResizable);
   FlutterViewId const view_id = window->view_controller_->view()->view_id();
   active_windows_[window->GetWindowHandle()] = std::move(window);
   return view_id;
@@ -44,9 +54,8 @@ FlutterViewId WindowManager::CreateRegularWindow(
 FlutterViewId WindowManager::CreateDialogWindow(
     const DialogWindowCreationRequest* request) {
   auto window = HostWindow::CreateDialogWindow(
-      this, engine_, request->preferred_size, request->preferred_constraints,
-      request->title, request->parent_or_null, request->center,
-      request->isResizable, request->isFullscreenAllMonitors);
+      this, engine_, request->initial_position, request->preferred_size,
+      request->preferred_constraints, request->title, request->parent_or_null);
   if (!window || !window->GetWindowHandle()) {
     FML_LOG(ERROR) << "Failed to create host window";
     return -1;
@@ -187,7 +196,6 @@ bool InternalFlutterWindows_WindowManager_GetFullscreen(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
     return window->GetFullscreen();
-    
   }
 
   return false;
@@ -200,25 +208,121 @@ void InternalFlutterWindows_WindowManager_DragWindow(HWND hwnd, int32_t state) {
   }
 }
 
-void InternalFlutterWindows_WindowManager_SetPosition(
+void InternalFlutterWindows_WindowManager_SetBounds(
     HWND hwnd,
-    const flutter::PositionRequest* request) {
+    const flutter::WindowBoundsRequest* request) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
-    window->SetPosition(request->x, request->y);
+    window->SetBounds(request);
   }
 }
 
-flutter::ActualWindowPosition
-InternalFlutterWindows_WindowManager_GetWindowPosition(HWND hwnd) {
+flutter::ActualWindowBounds
+InternalFlutterWindows_WindowManager_GetWindowBounds(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
-  flutter::ActualWindowPosition result;
+  flutter::ActualWindowBounds result;
   result.x = 0;
   result.y = 0;
+  result.width = 0;
+  result.height = 0;
   if (window) {
-    const flutter::Point point = window->GetPosition();
-    result.x = point.x();
-    result.y = point.y();
+    const flutter::Rect rect = window->GetBounds();
+    result.x = rect.left();
+    result.y = rect.top();
+    result.width = rect.width();
+    result.height = rect.height();
   }
   return result;
+}
+
+void InternalFlutterWindows_WindowManager_FocusWindow(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->FocusWindow();
+  }
+}
+
+void InternalFlutterWindows_WindowManager_SetNoFrame(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->SetNoFrame();
+  }
+}
+
+void InternalFlutterWindows_WindowManager_FullOnMonitors(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->FullOnMonitors();
+  }
+}
+
+bool InternalFlutterWindows_WindowManager_IsAlwaysOnTop(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    return window->IsAlwaysOnTop();
+  }
+  return false;
+}
+
+void InternalFlutterWindows_WindowManager_SetAlwaysOnTop(
+    HWND hwnd,
+    bool is_always_on_top) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->SetAlwaysOnTop(is_always_on_top);
+  }
+}
+
+bool InternalFlutterWindows_WindowManager_IsResizable(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    return window->IsResizable();
+  }
+  return false;
+}
+
+void InternalFlutterWindows_WindowManager_SetResizable(HWND hwnd,
+                                                       bool is_resizable) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->SetResizable(is_resizable);
+  }
+}
+
+void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->CenterWindowOnMonitor();
+  }
+}
+
+bool InternalFlutterWindows_WindowManager_IsMinimized(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    return window->IsMinimized();
+  }
+  return false;
+}
+
+void InternalFlutterWindows_WindowManager_Restore(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->Restore();
+  }
+}
+
+bool InternalFlutterWindows_WindowManager_IsSkipTaskbar(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    return window->IsSkipTaskbar();
+  }
+  return false;
+}
+
+void InternalFlutterWindows_WindowManager_SetSkipTaskbar(HWND hwnd,
+                                                         bool is_skip_taskbar) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->SetSkipTaskbar(is_skip_taskbar);
+  }
 }

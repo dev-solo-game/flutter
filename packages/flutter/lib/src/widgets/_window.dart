@@ -97,6 +97,27 @@ sealed class BaseWindowController extends ChangeNotifier {
   set rootView(FlutterView view) {
     _view = view;
   }
+
+  @internal
+  void show();
+  @internal
+  void hide();
+  @internal
+  void dragWindow(int state);
+  @internal
+  void focus();
+  @internal
+  void setBounds(Offset? position, Size? size);
+  @internal
+  void setAlwaysOnTop(bool alwaysOnTop);
+  @internal
+  void fullOnMonitors();
+  @internal
+  void setNoFrame();
+  @internal
+  void setResizable(bool resizable);
+  @internal
+  void setSkipTaskbar(bool skipTaskbar);
 }
 
 /// Delegate class for regular window controller.
@@ -143,7 +164,7 @@ mixin class RegularWindowControllerDelegate {
   }
 
   @internal
-  void onWindowActivated(RegularWindowController controller,bool actevated) {
+  void onWindowActivated(RegularWindowController controller, bool actevated) {
     if (!isWindowingEnabled) {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
     }
@@ -232,14 +253,12 @@ abstract class RegularWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   factory RegularWindowController({
-    bool center = true,
-    bool isResizable = true,
-    bool isFullscreenAllMonitors = false,
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     String? title,
     RegularWindowControllerDelegate? delegate,
     BaseWindowController? parent,
+    Offset? initPosition,
   }) {
     if (!isWindowingEnabled) {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
@@ -256,9 +275,7 @@ abstract class RegularWindowController extends BaseWindowController {
       preferredConstraints: preferredConstraints,
       title: title,
       parent: parent,
-      center: center,
-      isResizable: isResizable,
-      isFullscreenAllMonitors: isFullscreenAllMonitors,
+      initPosition: initPosition,
     );
   }
 
@@ -393,15 +410,6 @@ abstract class RegularWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   void setFullscreen(bool fullscreen, {Display? display});
-
-  @internal
-  void show();
-  @internal
-  void hide();
-  @internal
-  void dragWindow(int state);
-  @internal
-  void setPosition(double x ,double y);
 }
 
 /// Delegate class for dialog window controller.
@@ -538,9 +546,7 @@ abstract class DialogWindowController extends BaseWindowController {
   ///
   /// {@macro flutter.widgets.windowing.experimental}
   factory DialogWindowController({
-    bool center = true,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
     Size? preferredSize,
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
@@ -555,9 +561,7 @@ abstract class DialogWindowController extends BaseWindowController {
       preferredConstraints: preferredConstraints,
       title: title,
       parent: parent,
-      center: center,
-      isResizable: isResizable,
-      isFullscreenAllMonitors: isFullscreenAllMonitors,
+      initPosition: initPosition,
     );
   }
 
@@ -589,7 +593,7 @@ abstract class DialogWindowController extends BaseWindowController {
   @internal
   String get title;
 
-    @internal
+  @internal
   Offset get position;
 
   /// Whether the window is currently activated.
@@ -655,15 +659,6 @@ abstract class DialogWindowController extends BaseWindowController {
   /// {@macro flutter.widgets.windowing.experimental}
   @internal
   void setMinimized(bool minimized);
-
-  @internal
-  void show();
-  @internal
-  void hide();
-  @internal
-  void dragWindow(int state);
-  @internal
-  void setPosition(double x ,double y);
 }
 
 /// Delegate class for tooltip window controller.
@@ -829,9 +824,7 @@ abstract class WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-    bool center = true,
-    bool isResizable = true,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   });
 
   /// Creates a [DialogWindowController] with the provided properties.
@@ -848,9 +841,7 @@ abstract class WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = true,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   });
 
   /// Creates a [TooltipWindowController] with the provided properties.
@@ -900,9 +891,7 @@ class _WindowingOwnerUnsupported extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     String? title,
     BaseWindowController? parent,
-    bool center = true,
-    bool isResizable = true,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   }) {
     throw UnsupportedError(errorMessage);
   }
@@ -914,9 +903,7 @@ class _WindowingOwnerUnsupported extends WindowingOwner {
     BoxConstraints? preferredConstraints,
     BaseWindowController? parent,
     String? title,
-    bool center = true,
-    bool isResizable = false,
-    bool isFullscreenAllMonitors = false,
+    Offset? initPosition,
   }) {
     throw UnsupportedError(errorMessage);
   }

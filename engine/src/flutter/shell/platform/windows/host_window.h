@@ -41,13 +41,11 @@ class HostWindow {
   static std::unique_ptr<HostWindow> CreateRegularWindow(
       WindowManager* window_manager,
       FlutterWindowsEngine* engine,
+      const WindowPositionRequest& init_position,
       const WindowSizeRequest& preferred_size,
       const WindowConstraints& preferred_constraints,
       LPCWSTR title,
-      HWND parent,
-      bool center,
-      bool is_resizable,
-      bool is_fullscreen_monitors);
+      HWND parent);
 
   // Creates a dialog Win32 window with a child view confined to its client
   // area. |window_manager| is a pointer to the window manager that manages the
@@ -63,13 +61,11 @@ class HostWindow {
   static std::unique_ptr<HostWindow> CreateDialogWindow(
       WindowManager* window_manager,
       FlutterWindowsEngine* engine,
+      const WindowPositionRequest& init_position,
       const WindowSizeRequest& preferred_size,
       const WindowConstraints& preferred_constraints,
       LPCWSTR title,
-      HWND parent,
-      bool center,
-      bool is_resizable,
-      bool is_fullscreen_monitors);
+      HWND parent);
 
   // Returns the instance pointer for |hwnd| or nullptr if invalid.
   static HostWindow* GetThisFromHandle(HWND hwnd);
@@ -109,8 +105,8 @@ class HostWindow {
   // windows are enabled or disabled.
   void UpdateModalStateLayer();
 
-  void MoveWindowXY(double x, double y);
-  void SetPosition(double x, double y);
+  void SetBounds(const flutter::WindowBoundsRequest* request);
+  Rect GetBounds();
   Point GetPosition();
 
   // Handles window dragging.
@@ -119,9 +115,19 @@ class HostWindow {
   //        2 = end (exit drag state)
   void DragWindow(int state);
 
-  void UpdateFullScreenMonitors();
-  void UpdateResizable(bool is_resizable);
-  void CenterWindowOnMonitor(HWND hwnd);
+  void SetNoFrame();
+  void FullOnMonitors();
+
+  bool IsAlwaysOnTop() const;
+  void SetAlwaysOnTop(bool is_always_on_top);
+  bool IsResizable() const;
+  void SetResizable(bool is_resizable);
+  void CenterWindowOnMonitor();
+  bool IsMinimized();
+  void Restore();
+  void FocusWindow();
+  bool IsSkipTaskbar() const;
+  void SetSkipTaskbar(bool is_skip_taskbar);
 
  protected:
   friend WindowManager;
@@ -148,13 +154,11 @@ class HostWindow {
              WindowArchetype archetype,
              DWORD window_style,
              DWORD extended_window_style,
+             const WindowPositionRequest& init_position,
              const BoxConstraints& box_constraints,
              Rect const initial_window_rect,
              LPCWSTR title,
-             std::optional<HWND> const& owner_window,
-             bool center = false,
-             bool is_resizable = false,
-             bool is_fullscreen_monitors = false);
+             std::optional<HWND> const& owner_window);
 
   // Calculates the required window size, in physical coordinates, to
   // accommodate the given |client_size|, in logical coordinates, constrained by
@@ -249,6 +253,8 @@ class HostWindow {
   POINT drag_start_window_pos_ = {0, 0};
 
   bool is_resizable_ = false;
+
+  bool is_skip_taskbar_ = false;
 
   FML_DISALLOW_COPY_AND_ASSIGN(HostWindow);
 };
