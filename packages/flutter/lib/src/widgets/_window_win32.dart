@@ -459,6 +459,13 @@ class RegularWindowControllerWin32 extends RegularWindowController {
 
   @override
   @internal
+  void center() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.centerWindowOnMonitor(getWindowHandle());
+  }
+
+  @override
+  @internal
   void focus() {
     _ensureNotDestroyed();
     _Win32PlatformInterface.focusWindow(getWindowHandle());
@@ -756,6 +763,13 @@ class DialogWindowControllerWin32 extends DialogWindowController {
   void hide() {
     _ensureNotDestroyed();
     _Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+  }
+
+  @override
+  @internal
+  void center() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.centerWindowOnMonitor(getWindowHandle());
   }
 
   @override

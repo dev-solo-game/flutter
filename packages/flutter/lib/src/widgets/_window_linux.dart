@@ -793,6 +793,9 @@ class RegularWindowControllerLinux extends RegularWindowController {
   void hide() {}
   @override
   @internal
+  void center() {}
+  @override
+  @internal
   void dragWindow(int state) {}
   @override
   @internal
@@ -986,6 +989,9 @@ class DialogWindowControllerLinux extends DialogWindowController {
   @override
   @internal
   void hide() {}
+  @override
+  @internal
+  void center() {}
   @override
   @internal
   void dragWindow(int state) {}

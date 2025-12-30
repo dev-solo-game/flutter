@@ -316,6 +316,8 @@ class RegularWindowControllerMacOS extends RegularWindowController {
   @override
   void hide() {}
   @override
+  void center() {}
+  @override
   void dragWindow(int state) {}
   @override
   void focus() {}
@@ -466,6 +468,8 @@ class DialogWindowControllerMacOS extends DialogWindowController {
   void show() {}
   @override
   void hide() {}
+  @override
+  void center() {}
   @override
   void dragWindow(int state) {}
   @override

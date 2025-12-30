@@ -103,6 +103,8 @@ sealed class BaseWindowController extends ChangeNotifier {
   @internal
   void hide();
   @internal
+  void center();
+  @internal
   void dragWindow(int state);
   @internal
   void focus();
