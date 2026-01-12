@@ -105,7 +105,7 @@ class HostWindow {
   // windows are enabled or disabled.
   void UpdateModalStateLayer();
 
-  void SetBounds(const flutter::WindowBoundsRequest* request);
+  void SetBounds(const flutter::WindowBoundsRequest* request , bool has_dpi = true);
   Rect GetBounds();
   Point GetPosition();
 

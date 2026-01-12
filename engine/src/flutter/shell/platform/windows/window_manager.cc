@@ -250,10 +250,10 @@ void InternalFlutterWindows_WindowManager_SetNoFrame(HWND hwnd) {
 }
 
 void InternalFlutterWindows_WindowManager_FullOnMonitors(HWND hwnd) {
-  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
-  if (window) {
-    window->FullOnMonitors();
-  }
+  // flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  // if (window) {
+  //   window->FullOnMonitors();
+  // }
 }
 
 bool InternalFlutterWindows_WindowManager_IsAlwaysOnTop(HWND hwnd) {
