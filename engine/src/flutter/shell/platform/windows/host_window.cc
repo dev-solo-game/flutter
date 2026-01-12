@@ -503,14 +503,11 @@ LRESULT HostWindow::OnNcHitTest(HWND hwnd,
   return HTCLIENT;
 }
 
-void HostWindow::SetBounds(const flutter::WindowBoundsRequest* request,
-                           bool has_dpi) {
+void HostWindow::SetBounds(const flutter::WindowBoundsRequest* request) {
   // Get DPI scale factor to convert logical pixels to physical pixels
-  double scale_factor = 1.0f;
-  if (!has_dpi) {
-    UINT const dpi = GetDpiForHWND(window_handle_);
-    scale_factor = static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
-  }
+  UINT const dpi = GetDpiForHWND(window_handle_);
+  double const scale_factor =
+      static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
 
   // Convert logical position to physical position
   int const physical_x = static_cast<int>(request->position.x * scale_factor);
