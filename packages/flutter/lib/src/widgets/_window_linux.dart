@@ -710,6 +710,10 @@ class RegularWindowControllerLinux extends RegularWindowController {
 
   @override
   @internal
+  Rect get bounds => Rect.zero; //TODO
+
+  @override
+  @internal
   bool get isActivated => _window.isActive();
 
   @override
@@ -934,6 +938,10 @@ class DialogWindowControllerLinux extends DialogWindowController {
   @override
   @internal
   Offset get position => Offset(0, 0); //TODO
+
+  @override
+  @internal
+  Rect get bounds => Rect.zero; //TODO
 
   @override
   @internal

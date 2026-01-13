@@ -1170,12 +1170,13 @@ std::optional<Size> HostWindow::GetWindowSizeForClientSize(
       .right = static_cast<LONG>(client_size.width() * scale_factor),
       .bottom = static_cast<LONG>(client_size.height() * scale_factor)};
 
-  if (!win32.AdjustWindowRectExForDpi(&rect, window_style, FALSE,
-                                      extended_window_style, dpi)) {
-    FML_LOG(ERROR) << "Failed to run AdjustWindowRectExForDpi: "
-                   << GetLastErrorAsString();
-    return std::nullopt;
-  }
+  //if has title bar, todo use
+  // if (!win32.AdjustWindowRectExForDpi(&rect, window_style, FALSE,
+  //                                     extended_window_style, dpi)) {
+  //   FML_LOG(ERROR) << "Failed to run AdjustWindowRectExForDpi: "
+  //                  << GetLastErrorAsString();
+  //   return std::nullopt;
+  // }
 
   double width = static_cast<double>(rect.right - rect.left);
   double height = static_cast<double>(rect.bottom - rect.top);

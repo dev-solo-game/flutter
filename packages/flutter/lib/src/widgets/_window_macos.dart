@@ -312,6 +312,9 @@ class RegularWindowControllerMacOS extends RegularWindowController {
   Offset get position => Offset(0, 0); //TODO
 
   @override
+  Rect get bounds => Rect.zero; //TODO
+
+  @override
   void show() {}
   @override
   void hide() {}
@@ -507,6 +510,9 @@ class DialogWindowControllerMacOS extends DialogWindowController {
 
   @override
   Offset get position => Offset(0, 0); //TODO
+
+  @override
+  Rect get bounds => Rect.zero; //TODO
 
   @override
   final BaseWindowController? parent;

@@ -306,6 +306,9 @@ abstract class RegularWindowController extends BaseWindowController {
   @internal
   Offset get position;
 
+  @internal
+  Rect get bounds;
+
   /// Whether the window is currently activated.
   ///
   /// If `true` this means that the window is currently focused and
