@@ -793,6 +793,83 @@ void HostWindow::SetSkipTaskbar(bool is_skip_taskbar) {
   }
 }
 
+void HostWindow::SetOpacity(double opacity_) {
+  HWND hWnd = GetWindowHandle();
+  long gwlExStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+  SetWindowLong(hWnd, GWL_EXSTYLE, gwlExStyle | WS_EX_LAYERED);
+  SetLayeredWindowAttributes(hWnd, 0, static_cast<int8_t>(255 * opacity_),
+                             0x02);
+}
+
+void HostWindow::SetBackgroundColor(int backgroundColorA,
+                                    int backgroundColorR,
+                                    int backgroundColorG,
+                                    int backgroundColorB) {
+  HWND hWnd = GetWindowHandle();
+  SetBackgroundColorHwnd(hWnd, backgroundColorA, backgroundColorR,
+                         backgroundColorG, backgroundColorB);
+}
+
+void HostWindow::SetIgnoreMouseEvents(bool ignore) {
+  HWND hwnd = GetWindowHandle();
+  LONG ex_style = ::GetWindowLong(hwnd, GWL_EXSTYLE);
+  if (ignore)
+    ex_style |= (WS_EX_TRANSPARENT | WS_EX_LAYERED);
+  else
+    ex_style &= ~(WS_EX_TRANSPARENT | WS_EX_LAYERED);
+
+  ::SetWindowLong(hwnd, GWL_EXSTYLE, ex_style);
+}
+
+void HostWindow::SetBackgroundColorHwnd(HWND hWnd,
+                                        int backgroundColorA,
+                                        int backgroundColorR,
+                                        int backgroundColorG,
+                                        int backgroundColorB) {
+  bool isTransparent = backgroundColorA == 0 && backgroundColorR == 0 &&
+                       backgroundColorG == 0 && backgroundColorB == 0;
+  const HINSTANCE hModule = LoadLibrary(TEXT("user32.dll"));
+  if (hModule) {
+    typedef enum _ACCENT_STATE {
+      ACCENT_DISABLED = 0,
+      ACCENT_ENABLE_GRADIENT = 1,
+      ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
+      ACCENT_ENABLE_BLURBEHIND = 3,
+      ACCENT_ENABLE_ACRYLICBLURBEHIND = 4,
+      ACCENT_ENABLE_HOSTBACKDROP = 5,
+      ACCENT_INVALID_STATE = 6
+    } ACCENT_STATE;
+    struct ACCENTPOLICY {
+      int nAccentState;
+      int nFlags;
+      int nColor;
+      int nAnimationId;
+    };
+    struct WINCOMPATTRDATA {
+      int nAttribute;
+      PVOID pData;
+      ULONG ulDataSize;
+    };
+    typedef BOOL(WINAPI * pSetWindowCompositionAttribute)(HWND,
+                                                          WINCOMPATTRDATA*);
+    const pSetWindowCompositionAttribute SetWindowCompositionAttribute =
+        (pSetWindowCompositionAttribute)GetProcAddress(
+            hModule, "SetWindowCompositionAttribute");
+    if (SetWindowCompositionAttribute) {
+      int32_t accent_state = isTransparent ? ACCENT_ENABLE_TRANSPARENTGRADIENT
+                                           : ACCENT_ENABLE_GRADIENT;
+      ACCENTPOLICY policy = {
+          accent_state, 2,
+          ((backgroundColorA << 24) + (backgroundColorB << 16) +
+           (backgroundColorG << 8) + (backgroundColorR)),
+          0};
+      WINCOMPATTRDATA data = {19, &policy, sizeof(policy)};
+      SetWindowCompositionAttribute(hWnd, &data);
+    }
+    FreeLibrary(hModule);
+  }
+}
+
 LRESULT HostWindow::HandleMessage(HWND hwnd,
                                   UINT message,
                                   WPARAM wparam,

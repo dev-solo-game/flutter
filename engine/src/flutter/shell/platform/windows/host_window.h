@@ -129,6 +129,20 @@ class HostWindow {
   bool IsSkipTaskbar() const;
   void SetSkipTaskbar(bool is_skip_taskbar);
 
+  void SetOpacity(double opacity_);
+  void SetBackgroundColor(int backgroundColorA,
+                          int backgroundColorR,
+                          int backgroundColorG,
+                          int backgroundColorB);
+  void SetIgnoreMouseEvents(bool ignore);
+
+ private:
+  void SetBackgroundColorHwnd(HWND hWnd,
+                              int backgroundColorA,
+                              int backgroundColorR,
+                              int backgroundColorG,
+                              int backgroundColorB);
+
  protected:
   friend WindowManager;
 
