@@ -616,9 +616,9 @@ LRESULT WindowApi::OnNcCalcSize(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 }
 
 LRESULT WindowApi::OnNcHitTest(HWND hwnd,
-                                WPARAM wParam,
-                                LPARAM lParam,
-                                int titleBarHeightLogical) {
+                               WPARAM wParam,
+                               LPARAM lParam,
+                               int titleBarHeightLogical) {
   POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
   ScreenToClient(hwnd, &pt);
 

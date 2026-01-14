@@ -12,7 +12,6 @@
 #include <optional>
 #include <string>
 
-
 #include "flutter/shell/geometry/geometry.h"
 #include "window_manager.h"
 
@@ -90,13 +89,13 @@ class WindowApi {
 
   // Sets whether the window should ignore mouse events.
   void SetIgnoreMouseEvents(bool ignore);
-  
-  
+
   static LRESULT OnNcCalcSize(HWND hwnd, WPARAM wParam, LPARAM lParam);
   static LRESULT OnNcHitTest(HWND hwnd,
-                                  WPARAM wParam,
-                                  LPARAM lParam,
-                                  int titleBarHeightLogical);
+                             WPARAM wParam,
+                             LPARAM lParam,
+                             int titleBarHeightLogical);
+
  private:
   // Private helper method for setting background color on a specific HWND.
   void SetBackgroundColorHwnd(HWND hWnd,
