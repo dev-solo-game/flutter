@@ -42,6 +42,7 @@ class WindowApi {
   //        2 = end (exit drag state)
   void DragWindow(int state);
 
+  void SetNoSystemMenu();
   // Removes the window frame.
   void SetNoFrame();
 

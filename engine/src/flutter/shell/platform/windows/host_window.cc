@@ -284,7 +284,7 @@ void HostWindow::InitializeFlutterView(
   // Create the native window.
   window_handle_ = CreateWindowEx(
       params.extended_window_style, kWindowClassName, params.title,
-      params.window_style, params.initial_window_rect.left(),
+      (params.window_style & ~WS_SYSMENU), params.initial_window_rect.left(),
       params.initial_window_rect.top(), params.initial_window_rect.width(),
       params.initial_window_rect.height(),
       params.owner_window ? *params.owner_window : nullptr, nullptr,
@@ -308,7 +308,7 @@ void HostWindow::InitializeFlutterView(
   SetWindowPos(window_handle_, nullptr,
                window_rect.left - left_dropshadow_width,
                window_rect.top - top_dropshadow_height, 0, 0,
-               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
   UpdateTheme(window_handle_);
 

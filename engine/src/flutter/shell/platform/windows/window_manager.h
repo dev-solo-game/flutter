@@ -275,6 +275,8 @@ FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd);
 FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_ShowWindow(HWND hwnd, int nCmd);
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_SetNoSystemMenu(HWND hwnd);
 }
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_MANAGER_H_

@@ -374,3 +374,10 @@ void InternalFlutterWindows_WindowManager_ShowWindow(HWND hwnd, int nCmd) {
     window->GetApi()->ShowWindowApi(nCmd);
   }
 }
+
+void InternalFlutterWindows_WindowManager_SetNoSystemMenu(HWND hwnd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->GetApi()->SetNoSystemMenu();
+  }
+}

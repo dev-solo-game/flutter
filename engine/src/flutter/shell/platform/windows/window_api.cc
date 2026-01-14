@@ -246,6 +246,19 @@ void WindowApi::DragWindow(int state) {
   }
 }
 
+void WindowApi::SetNoSystemMenu() {
+  if (!window_) {
+    return;
+  }
+
+  HWND window_handle = window_->GetWindowHandle();
+  if (!window_handle) {
+    return;
+  }
+  DWORD gwlStyle = GetWindowLong(window_handle, GWL_STYLE);
+  SetWindowLong(window_handle, GWL_STYLE, gwlStyle & ~(WS_SYSMENU));
+}
+
 void WindowApi::SetNoFrame() {
   if (!window_) {
     return;
