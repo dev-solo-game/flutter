@@ -90,6 +90,8 @@ class WindowApi {
   // Sets whether the window should ignore mouse events.
   void SetIgnoreMouseEvents(bool ignore);
 
+  void ShowWindowApi(int nCmd);
+
   static LRESULT OnNcCalcSize(HWND hwnd, WPARAM wParam, LPARAM lParam);
   static LRESULT OnNcHitTest(HWND hwnd,
                              WPARAM wParam,

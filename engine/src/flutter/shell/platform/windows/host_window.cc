@@ -319,7 +319,7 @@ void HostWindow::InitializeFlutterView(
   // window. This doesn't work for multi window apps as the engine cannot have
   // multiple next frame callbacks. If multiple windows are created, only the
   // last one will be shown.
-  ShowWindow(window_handle_, params.nCmdShow);
+  ShowWindow(window_handle_, SW_HIDE);
   SetWindowLongPtr(window_handle_, GWLP_USERDATA,
                    reinterpret_cast<LONG_PTR>(this));
 }

@@ -273,6 +273,8 @@ void InternalFlutterWindows_WindowManager_SetSkipTaskbar(HWND hwnd,
                                                          bool is_skip_taskbar);
 FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd);
+FLUTTER_EXPORT
+void InternalFlutterWindows_WindowManager_ShowWindow(HWND hwnd, int nCmd);
 }
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_MANAGER_H_

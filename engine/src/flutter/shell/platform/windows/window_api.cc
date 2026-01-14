@@ -6,6 +6,7 @@
 #include <dwmapi.h>
 #include <windowsx.h>
 #include "dpi_utils.h"
+#include "flutter_windows_engine.h"
 #include "host_window.h"
 
 namespace {
@@ -516,6 +517,18 @@ void WindowApi::SetIgnoreMouseEvents(bool ignore) {
     ex_style &= ~(WS_EX_TRANSPARENT | WS_EX_LAYERED);
 
   ::SetWindowLong(hwnd, GWL_EXSTYLE, ex_style);
+}
+
+void WindowApi::ShowWindowApi(int nCmd) {
+  if (nCmd == SW_SHOW || nCmd == SW_SHOWNOACTIVATE) {
+    FlutterWindowsEngine* engine = window_->GetEngine();
+    if (engine != nullptr) {
+      engine->SetNextFrameCallback(
+          [this, nCmd]() { ::ShowWindow(window_->GetWindowHandle(), nCmd); });
+      return;
+    }
+  }
+  ::ShowWindow(window_->GetWindowHandle(), nCmd);
 }
 
 void WindowApi::SetBackgroundColorHwnd(HWND hWnd,

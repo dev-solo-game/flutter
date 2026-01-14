@@ -119,6 +119,8 @@ class HostWindow {
   // Returns the WindowApi instance for this window.
   std::shared_ptr<WindowApi> GetApi() const;
 
+  FlutterWindowsEngine* GetEngine() const { return engine_; }
+
  protected:
   struct HostWindowInitializationParams {
     WindowArchetype archetype;

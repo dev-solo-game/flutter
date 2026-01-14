@@ -367,3 +367,10 @@ void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd) {
     window->GetApi()->CenterWindowOnMonitor();
   }
 }
+
+void InternalFlutterWindows_WindowManager_ShowWindow(HWND hwnd, int nCmd) {
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (window) {
+    window->GetApi()->ShowWindowApi(nCmd);
+  }
+}

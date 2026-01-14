@@ -484,8 +484,17 @@ class RegularWindowControllerWin32 extends RegularWindowController {
       _owner._removeMessageHandler(_handler);
       _delegate.onWindowDestroyed();
       return 0;
-    } else if (message == _WM_SIZE || message == _WM_ACTIVATE) {
+    } else if (message == _WM_SIZE) {
       notifyListeners();
+    } else if (message == _WM_ACTIVATE) {
+      notifyListeners();
+      if (wParam != 0) {
+        //WA_INACTIVE(0) WA_ACTIVE(1) WA_CLICKACTIVE(2)
+        _delegate.onWindowActivated(this, true);
+      } else {
+        _delegate.onWindowActivated(this, false);
+      }
+      return 0;
     }
     return null;
   }
@@ -699,8 +708,17 @@ class DialogWindowControllerWin32 extends DialogWindowController {
       _owner._removeMessageHandler(_handler);
       _delegate.onWindowDestroyed();
       return 0;
-    } else if (message == _WM_SIZE || message == _WM_ACTIVATE) {
+    } else if (message == _WM_SIZE) {
       notifyListeners();
+    } else if (message == _WM_ACTIVATE) {
+      notifyListeners();
+      if (wParam != 0) {
+        //WA_INACTIVE(0) WA_ACTIVE(1) WA_CLICKACTIVE(2)
+        _delegate.onWindowActivated(this, true);
+      } else {
+        _delegate.onWindowActivated(this, false);
+      }
+      return 0;
     }
     return null;
   }
@@ -1262,6 +1280,11 @@ class _Win32PlatformInterface {
     symbol: 'InternalFlutterWindows_WindowManager_CenterWindowOnMonitor',
   )
   external static void centerWindowOnMonitor(HWND windowHandle);
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Int32)>(
+    symbol: 'InternalFlutterWindows_WindowManager_ShowWindow',
+  )
+  external static void showWindowApi(HWND windowHandle, int nCmdShow);
   //--------------------------------
 }
 
@@ -1598,16 +1621,22 @@ class WindowAPIWin32 extends BaseWindowAPI {
 
   @override
   @internal
-  void show() {
+  void show({bool activate = true}) {
     _ensureNotDestroyed();
-    //_Win32PlatformInterface.showWindow(getWindowHandle(), 5);
+    //SW_SHOW = 5, SW_SHOWNOACTIVATE = 4
+    if (activate) {
+      _Win32PlatformInterface.showWindowApi(getWindowHandle(), 5);
+    } else {
+      _Win32PlatformInterface.showWindowApi(getWindowHandle(), 4);
+    }
   }
 
   @override
   @internal
   void hide() {
     _ensureNotDestroyed();
-    //_Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+    //SW_HIDE = 0
+    _Win32PlatformInterface.showWindowApi(getWindowHandle(), 0);
   }
 
   @override

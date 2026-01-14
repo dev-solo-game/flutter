@@ -150,6 +150,13 @@ mixin class RegularWindowControllerDelegate {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
     }
   }
+
+  @internal
+  void onWindowActivated(RegularWindowController controller, bool isActivated) {
+    if (!isWindowingEnabled) {
+      throw UnsupportedError(_kWindowingDisabledErrorMessage);
+    }
+  }
 }
 
 /// A controller for a regular window.
@@ -425,6 +432,13 @@ mixin class DialogWindowControllerDelegate {
   /// * [onWindowCloseRequested], which is invoked when the user attempts to close the window.
   @internal
   void onWindowDestroyed() {
+    if (!isWindowingEnabled) {
+      throw UnsupportedError(_kWindowingDisabledErrorMessage);
+    }
+  }
+
+  @internal
+  void onWindowActivated(DialogWindowController controller, bool isActivated) {
     if (!isWindowingEnabled) {
       throw UnsupportedError(_kWindowingDisabledErrorMessage);
     }
@@ -1787,7 +1801,7 @@ class WindowScope extends InheritedModel<_WindowControllerAspect> {
 @internal
 abstract class BaseWindowAPI {
   @internal
-  void show();
+  void show({bool activate = true});
   @internal
   void hide();
   @internal
