@@ -16,6 +16,7 @@
 #include "flutter/shell/geometry/geometry.h"
 #include "flutter/shell/platform/common/windowing.h"
 #include "flutter/shell/platform/windows/window_manager.h"
+#include "window_api.h"
 
 namespace flutter {
 
@@ -114,6 +115,9 @@ class HostWindow {
   // It walks the path of child windows to make sure that the right
   // windows are enabled or disabled.
   void UpdateModalStateLayer();
+
+  // Returns the WindowApi instance for this window.
+  std::shared_ptr<WindowApi> GetApi() const;
 
  protected:
   struct HostWindowInitializationParams {
@@ -236,6 +240,9 @@ class HostWindow {
 
   // Used to mark a window as fullscreen.
   Microsoft::WRL::ComPtr<ITaskbarList2> task_bar_list_;
+
+  // WindowApi instance for this window.
+  std::shared_ptr<WindowApi> window_api_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(HostWindow);
 };

@@ -97,6 +97,15 @@ sealed class BaseWindowController extends ChangeNotifier {
   set rootView(FlutterView view) {
     _view = view;
   }
+
+  @internal
+  BaseWindowAPI get windowApi => _windowApi;
+  late final BaseWindowAPI _windowApi;
+
+  @protected
+  set windowApi(BaseWindowAPI api) {
+    _windowApi = api;
+  }
 }
 
 /// Delegate class for regular window controller.
@@ -1772,5 +1781,40 @@ class WindowScope extends InheritedModel<_WindowControllerAspect> {
             },
           },
     );
+  }
+}
+
+@internal
+abstract class BaseWindowAPI {
+  @internal
+  void show();
+  @internal
+  void hide();
+  @internal
+  void center();
+  @internal
+  void focus();
+  @internal
+  void dragWindow(int state);
+  @internal
+  void setBounds(Offset? position, Size? size);
+  @internal
+  Rect getBounds();
+  @internal
+  void setAlwaysOnTop(bool alwaysOnTop);
+  @internal
+  void setNoFrame();
+  @internal
+  void setResizable(bool resizable);
+  @internal
+  void setSkipTaskbar(bool skipTaskbar);
+
+  @internal
+  BaseWindowController get controller => _controller;
+  late final BaseWindowController _controller;
+
+  @protected
+  set controller(BaseWindowController controller) {
+    _controller = controller;
   }
 }

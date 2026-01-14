@@ -291,6 +291,9 @@ void HostWindow::InitializeFlutterView(
       GetModuleHandle(nullptr), engine_->windows_proc_table().get());
   FML_CHECK(window_handle_ != nullptr);
 
+  // Initialize the WindowApi instance.
+  window_api_ = std::make_shared<WindowApi>(this);
+
   // Adjust the window position so its origin aligns with the top-left corner
   // of the window frame, not the window rectangle (which includes the
   // drop-shadow). This adjustment must be done post-creation since the frame
@@ -374,6 +377,10 @@ LRESULT HostWindow::WndProc(HWND hwnd,
     EnableTransparentWindowBackground(hwnd, *windows_proc_table);
   } else if (HostWindow* const window = GetThisFromHandle(hwnd)) {
     return window->HandleMessage(hwnd, message, wparam, lparam);
+  } else if (message == WM_NCCALCSIZE) {
+    return WindowApi::OnNcCalcSize(hwnd, wparam, lparam);
+  } else if (message == WM_NCHITTEST) {
+    return HTCLIENT;
   }
 
   return DefWindowProc(hwnd, message, wparam, lparam);
@@ -476,7 +483,15 @@ LRESULT HostWindow::HandleMessage(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
-
+    case WM_NCCALCSIZE: {
+      return WindowApi::OnNcCalcSize(hwnd, wparam, lparam);
+    }
+    case WM_NCHITTEST: {
+      if (!GetApi()->IsResizable()) {
+        return HTCLIENT;
+      }
+      return WindowApi::OnNcHitTest(hwnd, wparam, lparam, 100);
+    }
     default:
       break;
   }
@@ -869,4 +884,7 @@ void HostWindow::UpdateModalStateLayer() {
   }
 }
 
+std::shared_ptr<WindowApi> HostWindow::GetApi() const {
+  return window_api_;
+}
 }  // namespace flutter

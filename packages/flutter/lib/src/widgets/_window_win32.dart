@@ -325,6 +325,7 @@ class RegularWindowControllerWin32 extends RegularWindowController {
       (FlutterView view) => view.viewId == viewId,
     );
     rootView = flutterView;
+    windowApi = WindowAPIWin32(owner: _owner, controller: this);
   }
 
   final WindowingOwnerWin32 _owner;
@@ -564,6 +565,7 @@ class DialogWindowControllerWin32 extends DialogWindowController {
       (FlutterView view) => view.viewId == viewId,
     );
     rootView = flutterView;
+    windowApi = WindowAPIWin32(owner: _owner, controller: this);
   }
 
   final WindowingOwnerWin32 _owner;
@@ -767,6 +769,7 @@ class TooltipWindowControllerWin32 extends TooltipWindowController
       (FlutterView view) => view.viewId == viewId,
     );
     rootView = flutterView;
+    windowApi = WindowAPIWin32(owner: _owner, controller: this);
   }
 
   final WindowingOwnerWin32 _owner;
@@ -1195,6 +1198,71 @@ class _Win32PlatformInterface {
     symbol: 'InternalFlutterWindows_WindowManager_UpdateTooltipPosition',
   )
   external static void updateTooltipWindowPosition(HWND windowHandle);
+
+  //------------------------------------
+  static void focusWindow(HWND windowHandle) {
+    try {
+      _focusWindow(windowHandle);
+    } finally {}
+  }
+
+  @ffi.Native<ffi.Void Function(HWND)>(symbol: 'InternalFlutterWindows_WindowManager_FocusWindow')
+  external static void _focusWindow(HWND windowHandle);
+
+  static void dragWindow(HWND windowHandle, int state) {
+    try {
+      _dragWindow(windowHandle, state);
+    } finally {}
+  }
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Int32)>(
+    symbol: 'InternalFlutterWindows_WindowManager_DragWindow',
+  )
+  external static void _dragWindow(HWND windowHandle, int state);
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Pointer<_WindowBoundsRequest>)>(
+    symbol: 'InternalFlutterWindows_WindowManager_SetBounds',
+  )
+  external static void _setBounds(HWND windowHandle, ffi.Pointer<_WindowBoundsRequest> request);
+  static void setBounds(ffi.Allocator allocator, HWND windowHandle, Offset? position, Size? size) {
+    final ffi.Pointer<_WindowBoundsRequest> request = allocator<_WindowBoundsRequest>();
+    try {
+      request.ref.position.from(position);
+      request.ref.size.from(size);
+      _setBounds(windowHandle, request);
+    } finally {
+      allocator.free(request);
+    }
+  }
+
+  @ffi.Native<_ActualWindowBounds Function(HWND)>(
+    symbol: 'InternalFlutterWindows_WindowManager_GetWindowBounds',
+  )
+  external static _ActualWindowBounds getWindowBounds(HWND windowHandle);
+
+  @ffi.Native<ffi.Void Function(HWND)>(symbol: 'InternalFlutterWindows_WindowManager_SetNoFrame')
+  external static void setNoFrame(HWND windowHandle);
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Bool)>(
+    symbol: 'InternalFlutterWindows_WindowManager_SetAlwaysOnTop',
+  )
+  external static void setAlwaysOnTop(HWND windowHandle, bool alwaysOnTop);
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Bool)>(
+    symbol: 'InternalFlutterWindows_WindowManager_SetResizable',
+  )
+  external static void setResizable(HWND windowHandle, bool resizable);
+
+  @ffi.Native<ffi.Void Function(HWND, ffi.Bool)>(
+    symbol: 'InternalFlutterWindows_WindowManager_SetSkipTaskbar',
+  )
+  external static void setSkipTaskbar(HWND windowHandle, bool skipTaskbar);
+
+  @ffi.Native<ffi.Void Function(HWND)>(
+    symbol: 'InternalFlutterWindows_WindowManager_CenterWindowOnMonitor',
+  )
+  external static void centerWindowOnMonitor(HWND windowHandle);
+  //--------------------------------
 }
 
 /// Payload for the creation method used by [_Win32PlatformInterface.createRegularWindow].
@@ -1327,6 +1395,53 @@ final class _WindowFullscreenRequest extends ffi.Struct {
   external int displayId;
 }
 
+//-------------------------
+final class _ActualWindowPosition extends ffi.Struct {
+  @ffi.Double()
+  external double x;
+
+  @ffi.Double()
+  external double y;
+}
+
+final class _ActualWindowBounds extends ffi.Struct {
+  @ffi.Double()
+  external double x;
+
+  @ffi.Double()
+  external double y;
+
+  @ffi.Double()
+  external double width;
+
+  @ffi.Double()
+  external double height;
+}
+
+final class _WindowPositionRequest extends ffi.Struct {
+  @ffi.Bool()
+  external bool hasPos;
+
+  @ffi.Double()
+  external double x;
+
+  @ffi.Double()
+  external double y;
+
+  void from(Offset? position) {
+    this.hasPos = position != null;
+    this.x = position?.dx ?? 0;
+    this.y = position?.dy ?? 0;
+  }
+}
+
+final class _WindowBoundsRequest extends ffi.Struct {
+  external _WindowPositionRequest position;
+  external _WindowSizeRequest size;
+}
+
+//-------------------------
+
 /// The contents of a native zero-terminated array of UTF-16 code units.
 ///
 /// The Utf16 type itself has no functionality, it's only intended to be used
@@ -1458,4 +1573,104 @@ final class _CallocAllocator implements ffi.Allocator {
 
   /// Returns a pointer to a native free function.
   ffi.Pointer<ffi.NativeFinalizerFunction> get nativeFree => _winCoTaskMemFreePointer;
+}
+
+class WindowAPIWin32 extends BaseWindowAPI {
+  final WindowingOwnerWin32 _owner;
+  @internal
+  WindowAPIWin32({required WindowingOwnerWin32 owner, required BaseWindowController controller})
+    : _owner = owner {
+    this.controller = controller;
+  }
+  void _ensureNotDestroyed() {
+    // if (_destroyed) {
+    //   throw StateError('Window has been destroyed.');
+    // }
+  }
+  @internal
+  HWND getWindowHandle() {
+    _ensureNotDestroyed();
+    return _Win32PlatformInterface.getWindowHandle(
+      WidgetsBinding.instance.platformDispatcher.engineId!,
+      controller.rootView.viewId,
+    );
+  }
+
+  @override
+  @internal
+  void show() {
+    _ensureNotDestroyed();
+    //_Win32PlatformInterface.showWindow(getWindowHandle(), 5);
+  }
+
+  @override
+  @internal
+  void hide() {
+    _ensureNotDestroyed();
+    //_Win32PlatformInterface.showWindow(getWindowHandle(), _SW_HIDE);
+  }
+
+  @override
+  @internal
+  void center() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.centerWindowOnMonitor(getWindowHandle());
+  }
+
+  @override
+  @internal
+  void focus() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.focusWindow(getWindowHandle());
+  }
+
+  @override
+  @internal
+  void dragWindow(int state) {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.dragWindow(getWindowHandle(), state);
+  }
+
+  @override
+  @internal
+  void setBounds(Offset? position, Size? size) {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setBounds(_owner.allocator, getWindowHandle(), position, size);
+  }
+
+  @override
+  @internal
+  Rect getBounds() {
+    _ensureNotDestroyed();
+    final _ActualWindowBounds bounds = _Win32PlatformInterface.getWindowBounds(getWindowHandle());
+    return Rect.fromLTWH(bounds.x, bounds.y, bounds.width, bounds.height);
+  }
+
+  @override
+  @internal
+  void setAlwaysOnTop(bool alwaysOnTop) {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setAlwaysOnTop(getWindowHandle(), alwaysOnTop);
+  }
+
+  @override
+  @internal
+  void setNoFrame() {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setNoFrame(getWindowHandle());
+  }
+
+  @override
+  @internal
+  void setResizable(bool resizable) {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setResizable(getWindowHandle(), resizable);
+  }
+
+  @override
+  @internal
+  void setSkipTaskbar(bool skipTaskbar) {
+    _ensureNotDestroyed();
+    _Win32PlatformInterface.setSkipTaskbar(getWindowHandle(), skipTaskbar);
+  }
 }
