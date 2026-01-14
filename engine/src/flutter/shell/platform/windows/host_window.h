@@ -18,6 +18,7 @@
 
 namespace flutter {
 
+class WindowApi;
 class WindowManager;
 class WindowsProcTable;
 class FlutterWindowsView;
@@ -105,43 +106,8 @@ class HostWindow {
   // windows are enabled or disabled.
   void UpdateModalStateLayer();
 
-  void SetBounds(const flutter::WindowBoundsRequest* request);
-  Rect GetBounds();
-  Point GetPosition();
-
-  // Handles window dragging.
-  // state: 0 = start (record mouse position and enter drag state)
-  //        1 = update (move window based on current mouse position)
-  //        2 = end (exit drag state)
-  void DragWindow(int state);
-
-  void SetNoFrame();
-  void FullOnMonitors();
-
-  bool IsAlwaysOnTop() const;
-  void SetAlwaysOnTop(bool is_always_on_top);
-  bool IsResizable() const;
-  void SetResizable(bool is_resizable);
-  void CenterWindowOnMonitor();
-  bool IsMinimized();
-  void Restore();
-  void FocusWindow();
-  bool IsSkipTaskbar() const;
-  void SetSkipTaskbar(bool is_skip_taskbar);
-
-  void SetOpacity(double opacity_);
-  void SetBackgroundColor(int backgroundColorA,
-                          int backgroundColorR,
-                          int backgroundColorG,
-                          int backgroundColorB);
-  void SetIgnoreMouseEvents(bool ignore);
-
- private:
-  void SetBackgroundColorHwnd(HWND hWnd,
-                              int backgroundColorA,
-                              int backgroundColorR,
-                              int backgroundColorG,
-                              int backgroundColorB);
+  // Returns the WindowApi instance for this window.
+  std::shared_ptr<WindowApi> GetApi() const;
 
  protected:
   friend WindowManager;
@@ -261,14 +227,8 @@ class HostWindow {
   // Used to mark a window as fullscreen.
   Microsoft::WRL::ComPtr<ITaskbarList2> task_bar_list_;
 
-  // Drag state tracking.
-  bool is_dragging_ = false;
-  POINT drag_start_cursor_pos_ = {0, 0};
-  POINT drag_start_window_pos_ = {0, 0};
-
-  bool is_resizable_ = false;
-
-  bool is_skip_taskbar_ = false;
+  // WindowApi instance for this window.
+  std::shared_ptr<WindowApi> window_api_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(HostWindow);
 };
