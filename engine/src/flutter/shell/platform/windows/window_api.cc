@@ -90,8 +90,9 @@ void WindowApi::SetBounds(const WindowBoundsRequest* request) {
   // The user expects to set the visible frame position, not the window rect.
   RECT frame_rect;
   RECT window_rect;
-  if (SUCCEEDED(DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS,
-                                      &frame_rect, sizeof(frame_rect))) &&
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect))) &&
       GetWindowRect(window_handle, &window_rect)) {
     // Calculate shadow offset
     LONG const left_shadow = frame_rect.left - window_rect.left;
@@ -134,8 +135,9 @@ Point WindowApi::GetPosition() {
   // Use DWMWA_EXTENDED_FRAME_BOUNDS to get the visible frame position
   // (excluding drop shadow), which matches what the user expects.
   RECT frame_rect;
-  if (SUCCEEDED(DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS,
-                                      &frame_rect, sizeof(frame_rect)))) {
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect)))) {
     // Convert physical position to logical position
     return Point(static_cast<double>(frame_rect.left) / scale_factor,
                  static_cast<double>(frame_rect.top) / scale_factor);
@@ -169,8 +171,9 @@ Rect WindowApi::GetBounds() {
   // Use DWMWA_EXTENDED_FRAME_BOUNDS to get the visible frame bounds
   // (excluding drop shadow), which matches what the user expects.
   RECT frame_rect;
-  if (SUCCEEDED(DwmGetWindowAttribute(window_handle, DWMWA_EXTENDED_FRAME_BOUNDS,
-                                      &frame_rect, sizeof(frame_rect)))) {
+  if (SUCCEEDED(DwmGetWindowAttribute(window_handle,
+                                      DWMWA_EXTENDED_FRAME_BOUNDS, &frame_rect,
+                                      sizeof(frame_rect)))) {
     // Convert physical bounds to logical bounds
     return Rect(Point(static_cast<double>(frame_rect.left) / scale_factor,
                       static_cast<double>(frame_rect.top) / scale_factor),
@@ -306,9 +309,8 @@ void WindowApi::SetAlwaysOnTop(bool is_always_on_top) {
     return;
   }
 
-  SetWindowPos(window_handle,
-               is_always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE);
+  SetWindowPos(window_handle, is_always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
+               0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 }
 
 bool WindowApi::IsResizable() {
@@ -567,4 +569,3 @@ void WindowApi::SetBackgroundColorHwnd(HWND hWnd,
 }
 
 }  // namespace flutter
-

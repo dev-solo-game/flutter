@@ -116,4 +116,3 @@ class WindowApi {
 }  // namespace flutter
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_API_H_
-
