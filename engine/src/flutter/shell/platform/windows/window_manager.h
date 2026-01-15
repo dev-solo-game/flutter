@@ -104,24 +104,6 @@ struct FullscreenRequest {
   FlutterEngineDisplayId display_id;
 };
 
-struct WindowPositionRequest {
-  bool has_pos = false;
-  double x;
-  double y;
-};
-
-struct ActualWindowBounds {
-  double x;
-  double y;
-  double width;
-  double height;
-};
-
-struct WindowBoundsRequest {
-  WindowPositionRequest position;
-  WindowSizeRequest size;
-};
-
 // A manager class for managing |HostWindow| instances.
 // A unique instance of this class is owned by |FlutterWindowsEngine|.
 class WindowManager {
@@ -226,57 +208,6 @@ bool InternalFlutterWindows_WindowManager_GetFullscreen(HWND hwnd);
 
 FLUTTER_EXPORT
 void InternalFlutterWindows_WindowManager_UpdateTooltipPosition(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_DragWindow(HWND hwnd, int32_t state);
-
-FLUTTER_EXPORT
-flutter::ActualWindowBounds
-InternalFlutterWindows_WindowManager_GetWindowBounds(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetBounds(
-    HWND hwnd,
-    const flutter::WindowBoundsRequest* request);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_FocusWindow(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetNoFrame(HWND hwnd);
-
-FLUTTER_EXPORT
-bool InternalFlutterWindows_WindowManager_IsAlwaysOnTop(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetAlwaysOnTop(HWND hwnd,
-                                                         bool is_always_on_top);
-
-FLUTTER_EXPORT
-bool InternalFlutterWindows_WindowManager_IsResizable(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetResizable(HWND hwnd,
-                                                       bool is_resizable);
-
-FLUTTER_EXPORT
-bool InternalFlutterWindows_WindowManager_IsMinimized(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_Restore(HWND hwnd);
-
-FLUTTER_EXPORT
-bool InternalFlutterWindows_WindowManager_IsSkipTaskbar(HWND hwnd);
-
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetSkipTaskbar(HWND hwnd,
-                                                         bool is_skip_taskbar);
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_CenterWindowOnMonitor(HWND hwnd);
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_ShowWindow(HWND hwnd, int nCmd);
-FLUTTER_EXPORT
-void InternalFlutterWindows_WindowManager_SetNoSystemMenu(HWND hwnd);
 }
 
 #endif  // FLUTTER_SHELL_PLATFORM_WINDOWS_WINDOW_MANAGER_H_

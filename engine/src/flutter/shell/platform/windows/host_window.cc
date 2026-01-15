@@ -492,6 +492,10 @@ LRESULT HostWindow::HandleMessage(HWND hwnd,
       }
       return WindowApi::OnNcHitTest(hwnd, wparam, lparam, 100);
     }
+    case WM_TIMER: {
+      GetApi()->OnTimer(wparam, lparam);
+      return 0;
+    }
     default:
       break;
   }

@@ -41,6 +41,37 @@ To try experimental windowing APIs:
 See: https://github.com/flutter/flutter/issues/30701.
 ''';
 
+/// Animation easing type for window animations.
+///
+/// These values define how the animation progresses over time.
+///
+/// {@macro flutter.widgets.windowing.experimental}
+@internal
+enum AnimationEasing {
+  /// Linear interpolation (no easing, constant speed).
+  linear(0),
+
+  /// Ease in (slow start, accelerates).
+  easeIn(1),
+
+  /// Ease out (fast start, decelerates).
+  easeOut(2),
+
+  /// Ease in and out (slow start and end).
+  easeInOut(3),
+
+  /// macOS-style spring bounce effect.
+  springBounce(4),
+
+  /// Overshoot and settle back.
+  overshoot(5);
+
+  const AnimationEasing(this.value);
+
+  /// The integer value used by the native API.
+  final int value;
+}
+
 /// Base class for window controllers.
 ///
 /// A [BaseWindowController] is associated with exactly one root [FlutterView].
@@ -1822,7 +1853,21 @@ abstract class BaseWindowAPI {
   void setResizable(bool resizable);
   @internal
   void setSkipTaskbar(bool skipTaskbar);
-
+  @internal
+  void playPositionAnim(
+    Offset position,
+    int duration,
+    AnimationEasing easing,
+    bool useCustomSpring,
+  );
+  @internal
+  void playSizeAnim(Size size, int duration, AnimationEasing easing, bool useCustomSpring);
+  @internal
+  void playBoundsAnim(Rect bounds, int duration, AnimationEasing easing, bool useCustomSpring);
+  @internal
+  void playOpacityAnim(double opacity, int duration, AnimationEasing easing);
+  @internal
+  void stopAllAnimations();
   @internal
   BaseWindowController get controller => _controller;
   late final BaseWindowController _controller;
