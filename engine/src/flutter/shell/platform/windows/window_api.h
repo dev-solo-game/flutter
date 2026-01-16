@@ -214,8 +214,8 @@ struct AnimationRequest {
 
 // Window animation instance structure.
 struct WindowAnimation {
-  UINT_PTR timer_id = 0;  // Timer identifier
-  HWND hwnd = nullptr;    // Target window handle
+  uint64_t animation_id = 0;  // Animation identifier
+  HWND hwnd = nullptr;        // Target window handle
   AnimationPropertyType property = AnimationPropertyType::kPosition;
   AnimationEasingType easing = AnimationEasingType::kSpringBounce;
 
@@ -233,10 +233,10 @@ struct WindowAnimation {
   double target_height = 0;
   double target_opacity = 1.0;
 
-  // Animation timing (using high-precision timer)
-  LARGE_INTEGER start_time_qpc;  // High-precision start time
-  DWORD duration = 300;          // Animation duration (ms)
-  double progress = 0.0;         // Current progress (0.0 - 1.0)
+  // Animation timing
+  double elapsed_ms = 0;  // Elapsed time since animation start (ms)
+  DWORD duration = 300;   // Animation duration (ms)
+  double progress = 0.0;  // Current progress (0.0 - 1.0)
 
   // Cached values (computed once at animation start)
   double scale_factor = 1.0;  // DPI scale factor
@@ -387,8 +387,8 @@ class WindowApi {
       AnimationEasingType easing = AnimationEasingType::kEaseOut,
       std::function<void()> on_complete = nullptr);
 
-  // Stops an animation by timer ID.
-  void StopAnimation(UINT_PTR timer_id);
+  // Stops an animation by animation ID.
+  void StopAnimation(UINT_PTR animation_id);
 
   // Stops all animations for this window.
   void StopAllAnimations();
@@ -398,6 +398,11 @@ class WindowApi {
 
   // Sets spring bounce parameters for future animations.
   void SetSpringParameters(double damping, double stiffness);
+
+  // Called internally to tick animations.
+  // This method is called at ~60 FPS via unified WindowApiTimer.
+  // @param delta_ms: Time elapsed since last tick (in milliseconds)
+  void OnAnimationTick(double delta_ms);
 
  private:
   // Private helper method for setting background color on a specific HWND.
@@ -425,15 +430,18 @@ class WindowApi {
   Microsoft::WRL::ComPtr<ITaskbarList> task_bar_list_;
 
   // Animation storage and management.
-  std::unordered_map<UINT_PTR, WindowAnimation> active_animations_;
-  UINT_PTR next_timer_id_ = 1000;
+  std::unordered_map<uint64_t, WindowAnimation> active_animations_;
+  uint64_t next_animation_id_ = 1;
   double spring_damping_ = 0.7;
   double spring_stiffness_ = 100.0;
+
+  // Unified timer management methods (delegates to WindowApiTimer).
+  void StartAnimationTimer();
+  void StopAnimationTimer();
 
   // Animation helper methods.
   double CalculateEasing(double t, AnimationEasingType easing);
   double CalculateSpringBounce(double t, double damping, double stiffness);
-  void UpdateAnimation(WindowAnimation& anim);
   void ApplyAnimationFrame(WindowAnimation& anim, double eased_progress);
 
   // Stops animations that would conflict with the given property type.

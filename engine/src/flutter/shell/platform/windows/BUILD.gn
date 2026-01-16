@@ -135,6 +135,8 @@ source_set("flutter_windows_source") {
     "wchar_util.h",
     "window_api.cc",
     "window_api.h",
+    "window_api_timer.cc",
+    "window_api_timer.h",
     "window_binding_handler.h",
     "window_binding_handler_delegate.h",
     "window_manager.cc",

@@ -10,6 +10,8 @@
 #include "dpi_utils.h"
 #include "flutter_windows_engine.h"
 #include "host_window.h"
+#include "task_runner.h"
+#include "window_api_timer.h"
 
 namespace {
 
@@ -54,13 +56,13 @@ namespace flutter {
 WindowApi::WindowApi(HostWindow* window) : window_(window) {}
 
 WindowApi::~WindowApi() {
-  // Stop all animations when destroyed
+  // Remove from unified timer.
   if (window_) {
-    HWND hwnd = window_->GetWindowHandle();
-    if (hwnd) {
-      StopAllAnimations();
-    }
+    WindowApiTimer::GetInstance().RemoveWindow(window_);
   }
+
+  // Clear all animations when destroyed.
+  active_animations_.clear();
 }
 
 void WindowApi::SetBounds(const WindowBoundsRequest* request) {
@@ -691,9 +693,6 @@ LRESULT WindowApi::OnNcHitTest(HWND hwnd,
   return HTCLIENT;
 }
 
-// Animation timer interval in milliseconds (targeting ~60 FPS).
-constexpr UINT kAnimationTimerInterval = 16;
-
 // Easing function implementations.
 double WindowApi::CalculateEasing(double t, AnimationEasingType easing) {
   // Clamp t to [0, 1]
@@ -774,54 +773,81 @@ void WindowApi::SetSpringParameters(double damping, double stiffness) {
   spring_stiffness_ = (std::max)(10.0, (std::min)(500.0, stiffness));
 }
 
-// High-precision timer frequency (cached)
-static LARGE_INTEGER g_qpc_frequency = {0};
+// ============================================================
+// Unified Timer Animation Implementation
+// ============================================================
 
-static void EnsureQPCFrequency() {
-  if (g_qpc_frequency.QuadPart == 0) {
-    QueryPerformanceFrequency(&g_qpc_frequency);
+void WindowApi::StartAnimationTimer() {
+  // Add this window to the unified timer.
+  if (window_) {
+    WindowApiTimer::GetInstance().AddWindow(window_);
   }
 }
 
-static double GetElapsedMs(const LARGE_INTEGER& start) {
-  LARGE_INTEGER now;
-  QueryPerformanceCounter(&now);
-  return static_cast<double>(now.QuadPart - start.QuadPart) * 1000.0 /
-         static_cast<double>(g_qpc_frequency.QuadPart);
+void WindowApi::StopAnimationTimer() {
+  // Remove this window from the unified timer.
+  if (window_) {
+    WindowApiTimer::GetInstance().RemoveWindow(window_);
+  }
 }
 
-void WindowApi::UpdateAnimation(WindowAnimation& anim) {
-  if (!anim.is_active || !anim.hwnd) {
-    return;
-  }
+void WindowApi::OnAnimationTick(double delta_ms) {
+  // Called from main thread via PostTask at ~60 FPS.
+  // Process all active animations for this window.
+  // delta_ms is the time elapsed since last tick.
 
-  EnsureQPCFrequency();
-  double elapsed = GetElapsedMs(anim.start_time_qpc);
+  std::vector<uint64_t> completed_animations;
+  std::vector<std::function<void()>> callbacks_to_call;
 
-  if (elapsed >= static_cast<double>(anim.duration)) {
-    // Animation complete
-    anim.progress = 1.0;
-    ApplyAnimationFrame(anim, 1.0);
-    anim.is_active = false;
-
-    // Kill the timer
-    KillTimer(anim.hwnd, anim.timer_id);
-
-    // Call completion callback
-    if (anim.on_complete) {
-      anim.on_complete();
+  for (auto& pair : active_animations_) {
+    WindowAnimation& anim = pair.second;
+    if (!anim.is_active || !anim.hwnd) {
+      continue;
     }
-    return;
+
+    // Accumulate elapsed time.
+    anim.elapsed_ms += delta_ms;
+
+    if (anim.elapsed_ms >= static_cast<double>(anim.duration)) {
+      // Animation complete
+      anim.progress = 1.0;
+      ApplyAnimationFrame(anim, 1.0);
+      anim.is_active = false;
+      completed_animations.push_back(pair.first);
+
+      // Store callback to call outside the lock
+      if (anim.on_complete) {
+        callbacks_to_call.push_back(anim.on_complete);
+      }
+    } else {
+      // Calculate progress
+      anim.progress = anim.elapsed_ms / static_cast<double>(anim.duration);
+
+      // Apply easing
+      double eased_progress = CalculateEasing(anim.progress, anim.easing);
+
+      // Apply the animation frame
+      ApplyAnimationFrame(anim, eased_progress);
+    }
+  }
+  // Sync with DWM compositor for smoother animation (VSync alignment)
+  // DwmFlush();
+  // Remove completed animations
+  for (uint64_t id : completed_animations) {
+    active_animations_.erase(id);
   }
 
-  // Calculate progress using high-precision time
-  anim.progress = elapsed / static_cast<double>(anim.duration);
+  // If no more active animations, remove from unified timer.
+  if (!HasActiveAnimation()) {
+    StopAnimationTimer();
+  }
 
-  // Apply easing
-  double eased_progress = CalculateEasing(anim.progress, anim.easing);
-
-  // Apply the animation frame
-  ApplyAnimationFrame(anim, eased_progress);
+  // Call completion callbacks.
+  for (auto& callback : callbacks_to_call) {
+    if (callback) {
+      callback();
+    }
+  }
 }
 
 void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
@@ -847,8 +873,9 @@ void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
       physical_x -= static_cast<int>(anim.shadow_left);
       physical_y -= static_cast<int>(anim.shadow_top);
 
-      SetWindowPos(anim.hwnd, nullptr, physical_x, physical_y, 0, 0,
-                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE);
+      SetWindowPos(
+          anim.hwnd, nullptr, physical_x, physical_y, 0, 0,
+          SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
       break;
     }
 
@@ -868,7 +895,7 @@ void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
       physical_height += static_cast<int>(anim.shadow_top + anim.shadow_bottom);
 
       SetWindowPos(anim.hwnd, nullptr, 0, 0, physical_width, physical_height,
-                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE);
+                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
       break;
     }
 
@@ -896,8 +923,7 @@ void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
       physical_height += static_cast<int>(anim.shadow_top + anim.shadow_bottom);
 
       SetWindowPos(anim.hwnd, nullptr, physical_x, physical_y, physical_width,
-                   physical_height,
-                   SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE);
+                   physical_height, SWP_NOZORDER | SWP_NOACTIVATE);
       break;
     }
 
@@ -916,38 +942,18 @@ void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
       break;
     }
   }
-
-  // Sync with DWM compositor for smoother animation (VSync alignment)
-  DwmFlush();
 }
 
 bool WindowApi::OnTimer(WPARAM wParam, LPARAM lParam) {
-  UINT_PTR timer_id = static_cast<UINT_PTR>(wParam);
-
-  auto it = active_animations_.find(timer_id);
-  if (it == active_animations_.end()) {
-    return false;  // Not our timer
-  }
-
-  WindowAnimation& anim = it->second;
-  if (!anim.is_active) {
-    // Animation was stopped, clean up
-    active_animations_.erase(it);
-    return true;
-  }
-
-  UpdateAnimation(anim);
-
-  // Clean up completed animations
-  if (!anim.is_active) {
-    active_animations_.erase(it);
-  }
-
-  return true;
+  // Animation is now handled by dedicated thread, not WM_TIMER
+  // This method is kept for compatibility but returns false
+  // to indicate timer was not handled by animation system
+  return false;
 }
 
 void WindowApi::StopConflictingAnimations(AnimationPropertyType new_property) {
-  std::vector<UINT_PTR> to_stop;
+  // Stop animations that conflict with the new property type.
+  std::vector<uint64_t> to_stop;
 
   for (const auto& pair : active_animations_) {
     const WindowAnimation& anim = pair.second;
@@ -987,9 +993,12 @@ void WindowApi::StopConflictingAnimations(AnimationPropertyType new_property) {
     }
   }
 
-  // Stop all conflicting animations
-  for (UINT_PTR timer_id : to_stop) {
-    StopAnimation(timer_id);
+  // Mark conflicting animations as inactive (will be cleaned up by thread)
+  for (uint64_t anim_id : to_stop) {
+    auto it = active_animations_.find(anim_id);
+    if (it != active_animations_.end()) {
+      it->second.is_active = false;
+    }
   }
 }
 
@@ -1096,22 +1105,13 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
     return 0;
   }
 
-  // Stop any conflicting animations before starting new one
-  StopConflictingAnimations(request.property);
-
-  // Apply custom spring parameters if specified
-  if (request.use_custom_spring) {
-    spring_damping_ = request.spring_damping;
-    spring_stiffness_ = request.spring_stiffness;
-  }
-
   // Get DPI scale factor (cached for the animation duration)
   UINT dpi = GetDpiForHWND(hwnd);
   double scale_factor = static_cast<double>(dpi) / USER_DEFAULT_SCREEN_DPI;
 
   // Get shadow offsets (cached for the animation duration)
   LONG shadow_left = 0, shadow_right = 0, shadow_top = 0, shadow_bottom = 0;
-  RECT frame_rect, window_rect;
+  RECT frame_rect = {}, window_rect = {};
   if (SUCCEEDED(DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS,
                                       &frame_rect, sizeof(frame_rect))) &&
       GetWindowRect(hwnd, &window_rect)) {
@@ -1121,18 +1121,12 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
     shadow_bottom = window_rect.bottom - frame_rect.bottom;
   }
 
-  // Initialize high-precision timer
-  EnsureQPCFrequency();
-
   // Create animation instance
   WindowAnimation anim;
-  anim.timer_id = next_timer_id_++;
   anim.hwnd = hwnd;
   anim.property = request.property;
   anim.easing = request.easing;
   anim.duration = request.duration;
-  anim.spring_damping = spring_damping_;
-  anim.spring_stiffness = spring_stiffness_;
   anim.on_complete = request.on_complete;
   anim.is_active = true;
 
@@ -1143,8 +1137,7 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
   anim.shadow_top = shadow_top;
   anim.shadow_bottom = shadow_bottom;
 
-  // Use high-precision timer
-  QueryPerformanceCounter(&anim.start_time_qpc);
+  // elapsed_ms starts at 0 by default
 
   // Initialize start and target values based on property type
   switch (request.property) {
@@ -1235,11 +1228,30 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
     }
   }
 
-  // Store and start timer
-  active_animations_[anim.timer_id] = anim;
-  SetTimer(hwnd, anim.timer_id, kAnimationTimerInterval, nullptr);
+  // Apply custom spring parameters if specified
+  if (request.use_custom_spring) {
+    anim.spring_damping = request.spring_damping;
+    anim.spring_stiffness = request.spring_stiffness;
+  } else {
+    anim.spring_damping = spring_damping_;
+    anim.spring_stiffness = spring_stiffness_;
+  }
 
-  return anim.timer_id;
+  uint64_t animation_id;
+
+  // Stop any conflicting animations before starting new one
+  StopConflictingAnimations(request.property);
+
+  // Assign animation ID and store
+  animation_id = next_animation_id_++;
+  anim.animation_id = animation_id;
+  active_animations_[animation_id] = anim;
+
+  // Start the animation timer if not already running.
+  // Timer will call OnAnimationTick() directly at ~60 FPS.
+  StartAnimationTimer();
+
+  return animation_id;
 }
 
 // ============================================================
@@ -1308,31 +1320,16 @@ UINT_PTR WindowApi::StartOpacityAnimation(double target_opacity,
   return StartAnimation(request);
 }
 
-void WindowApi::StopAnimation(UINT_PTR timer_id) {
-  auto it = active_animations_.find(timer_id);
+void WindowApi::StopAnimation(UINT_PTR animation_id) {
+  auto it = active_animations_.find(animation_id);
   if (it != active_animations_.end()) {
-    WindowAnimation& anim = it->second;
-    if (anim.hwnd) {
-      KillTimer(anim.hwnd, timer_id);
-    }
-    active_animations_.erase(it);
+    it->second.is_active = false;
   }
 }
 
 void WindowApi::StopAllAnimations() {
-  if (!window_) {
-    return;
-  }
-
-  HWND hwnd = window_->GetWindowHandle();
-  if (!hwnd) {
-    return;
-  }
-
-  auto it = active_animations_.begin();
-  while (it != active_animations_.end()) {
-    KillTimer(hwnd, it->first);
-    it = active_animations_.erase(it);
+  for (auto& pair : active_animations_) {
+    pair.second.is_active = false;
   }
 }
 

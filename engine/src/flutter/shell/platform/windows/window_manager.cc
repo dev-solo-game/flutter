@@ -13,6 +13,7 @@
 #include "flutter/shell/platform/windows/flutter_windows_engine.h"
 #include "flutter/shell/platform/windows/flutter_windows_view_controller.h"
 #include "flutter/shell/platform/windows/host_window.h"
+#include "flutter/shell/platform/windows/window_api_timer.h"
 #include "fml/logging.h"
 #include "shell/platform/windows/client_wrapper/include/flutter/flutter_view.h"
 #include "shell/platform/windows/flutter_windows_view.h"
@@ -26,6 +27,9 @@ WindowManager::WindowManager(FlutterWindowsEngine* engine) : engine_(engine) {}
 void WindowManager::Initialize(const WindowingInitRequest* request) {
   on_message_ = request->on_message;
   isolate_ = Isolate::Current();
+
+  // Initialize the unified animation timer with the engine.
+  WindowApiTimer::GetInstance().Initialize(engine_);
 }
 
 FlutterViewId WindowManager::CreateRegularWindow(
