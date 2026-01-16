@@ -9,6 +9,7 @@
 #include <vector>
 #include "client_wrapper/include/flutter/flutter_engine.h"
 #include "dpi_utils.h"
+#include "easing.h"
 #include "flutter_windows_engine.h"
 #include "host_window.h"
 #include "task_runner.h"
@@ -702,24 +703,15 @@ double WindowApi::CalculateEasing(double t, AnimationEasingType easing) {
 
   switch (easing) {
     case AnimationEasingType::kLinear:
-      return t;
-
+      return tweeny::easing::linear.run(t, 0.0f, 1.0f);
     case AnimationEasingType::kEaseIn:
       // Quadratic ease in
-      return t * t;
-
+      return tweeny::easing::cubicIn.run(t, 0.0f, 1.0f);
     case AnimationEasingType::kEaseOut:
       // Quadratic ease out
-      return 1.0 - (1.0 - t) * (1.0 - t);
-
+      return tweeny::easing::cubicOut.run(t, 0.0f, 1.0f);
     case AnimationEasingType::kEaseInOut:
-      // Quadratic ease in-out
-      if (t < 0.5) {
-        return 2.0 * t * t;
-      } else {
-        return 1.0 - pow(-2.0 * t + 2.0, 2) / 2.0;
-      }
-
+      return tweeny::easing::cubicInOut.run(t, 0.0f, 1.0f);
     case AnimationEasingType::kSpringBounce:
       return CalculateSpringBounce(t, spring_damping_, spring_stiffness_);
 
