@@ -7,6 +7,7 @@
 #include <windowsx.h>
 #include <cmath>
 #include <vector>
+#include "client_wrapper/include/flutter/flutter_engine.h"
 #include "dpi_utils.h"
 #include "flutter_windows_engine.h"
 #include "host_window.h"
@@ -53,16 +54,17 @@ MonitorData GetMonitorUnderMouse() {
 
 namespace flutter {
 
-WindowApi::WindowApi(HostWindow* window) : window_(window) {}
+WindowApi::WindowApi(HostWindow* window) : window_(window) {
+  is_shutdown_.store(false);
+}
 
 WindowApi::~WindowApi() {
-  // Remove from unified timer.
-  if (window_) {
-    WindowApiTimer::GetInstance().RemoveWindow(window_);
-  }
-
   // Clear all animations when destroyed.
   active_animations_.clear();
+}
+
+void WindowApi::OnShutdown() {
+  is_shutdown_.store(true);
 }
 
 void WindowApi::SetBounds(const WindowBoundsRequest* request) {
@@ -777,75 +779,52 @@ void WindowApi::SetSpringParameters(double damping, double stiffness) {
 // Unified Timer Animation Implementation
 // ============================================================
 
-void WindowApi::StartAnimationTimer() {
-  // Add this window to the unified timer.
-  if (window_) {
-    WindowApiTimer::GetInstance().AddWindow(window_);
+void WindowApi::OnAnimationTickOnThread(double delta_ms) {
+  if (!is_shutdown_.load(std::memory_order_acquire) &&
+      !active_animations_.empty()) {
+    FlutterWindowsEngine* engine = window_->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask([this, delta_ms]() {
+        if (!is_shutdown_.load(std::memory_order_acquire)) {
+          OnAnimationTick(delta_ms);
+        }
+      });
+    }
   }
 }
-
-void WindowApi::StopAnimationTimer() {
-  // Remove this window from the unified timer.
-  if (window_) {
-    WindowApiTimer::GetInstance().RemoveWindow(window_);
-  }
-}
-
 void WindowApi::OnAnimationTick(double delta_ms) {
-  // Called from main thread via PostTask at ~60 FPS.
-  // Process all active animations for this window.
-  // delta_ms is the time elapsed since last tick.
+  {
+    std::vector<uint64_t> completed_animations;
 
-  std::vector<uint64_t> completed_animations;
-  std::vector<std::function<void()>> callbacks_to_call;
-
-  for (auto& pair : active_animations_) {
-    WindowAnimation& anim = pair.second;
-    if (!anim.is_active || !anim.hwnd) {
-      continue;
-    }
-
-    // Accumulate elapsed time.
-    anim.elapsed_ms += delta_ms;
-
-    if (anim.elapsed_ms >= static_cast<double>(anim.duration)) {
-      // Animation complete
-      anim.progress = 1.0;
-      ApplyAnimationFrame(anim, 1.0);
-      anim.is_active = false;
-      completed_animations.push_back(pair.first);
-
-      // Store callback to call outside the lock
-      if (anim.on_complete) {
-        callbacks_to_call.push_back(anim.on_complete);
+    for (auto& pair : active_animations_) {
+      WindowAnimation& anim = pair.second;
+      if (!anim.is_active || !anim.hwnd) {
+        continue;
       }
-    } else {
-      // Calculate progress
-      anim.progress = anim.elapsed_ms / static_cast<double>(anim.duration);
 
-      // Apply easing
-      double eased_progress = CalculateEasing(anim.progress, anim.easing);
+      // Accumulate elapsed time.
+      anim.elapsed_ms += delta_ms;
 
-      // Apply the animation frame
-      ApplyAnimationFrame(anim, eased_progress);
+      if (anim.elapsed_ms >= static_cast<double>(anim.duration)) {
+        // Animation complete
+        anim.progress = 1.0;
+        ApplyAnimationFrame(anim, 1.0);
+        completed_animations.push_back(pair.first);
+      } else {
+        // Calculate progress
+        anim.progress = anim.elapsed_ms / static_cast<double>(anim.duration);
+
+        // Apply easing
+        double eased_progress = CalculateEasing(anim.progress, anim.easing);
+
+        // Apply the animation frame
+        ApplyAnimationFrame(anim, eased_progress);
+      }
     }
-  }
-  // Sync with DWM compositor for smoother animation (VSync alignment)
-  // DwmFlush();
-  // Remove completed animations
-  for (uint64_t id : completed_animations) {
-    active_animations_.erase(id);
-  }
 
-  // If no more active animations, remove from unified timer.
-  if (!HasActiveAnimation()) {
-    StopAnimationTimer();
-  }
-
-  // Call completion callbacks.
-  for (auto& callback : callbacks_to_call) {
-    if (callback) {
-      callback();
+    // Remove completed animations
+    for (uint64_t id : completed_animations) {
+      active_animations_.erase(id);
     }
   }
 }
@@ -993,7 +972,8 @@ void WindowApi::StopConflictingAnimations(AnimationPropertyType new_property) {
     }
   }
 
-  // Mark conflicting animations as inactive (will be cleaned up by thread)
+  // Mark conflicting animations as inactive (will be cleaned up by timer
+  // thread)
   for (uint64_t anim_id : to_stop) {
     auto it = active_animations_.find(anim_id);
     if (it != active_animations_.end()) {
@@ -1127,7 +1107,6 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
   anim.property = request.property;
   anim.easing = request.easing;
   anim.duration = request.duration;
-  anim.on_complete = request.on_complete;
   anim.is_active = true;
 
   // Cache scale factor and shadow offsets
@@ -1239,18 +1218,15 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
 
   uint64_t animation_id;
 
-  // Stop any conflicting animations before starting new one
-  StopConflictingAnimations(request.property);
+  {
+    // Stop any conflicting animations before starting new one
+    StopConflictingAnimations(request.property);
 
-  // Assign animation ID and store
-  animation_id = next_animation_id_++;
-  anim.animation_id = animation_id;
-  active_animations_[animation_id] = anim;
-
-  // Start the animation timer if not already running.
-  // Timer will call OnAnimationTick() directly at ~60 FPS.
-  StartAnimationTimer();
-
+    // Assign animation ID and store
+    animation_id = next_animation_id_++;
+    anim.animation_id = animation_id;
+    active_animations_[animation_id] = anim;
+  }
   return animation_id;
 }
 
@@ -1261,30 +1237,26 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
 UINT_PTR WindowApi::StartPositionAnimation(double target_x,
                                            double target_y,
                                            DWORD duration,
-                                           AnimationEasingType easing,
-                                           std::function<void()> on_complete) {
+                                           AnimationEasingType easing) {
   AnimationRequest request;
   request.property = AnimationPropertyType::kPosition;
   request.target_x = target_x;
   request.target_y = target_y;
   request.duration = duration;
   request.easing = easing;
-  request.on_complete = on_complete;
   return StartAnimation(request);
 }
 
 UINT_PTR WindowApi::StartSizeAnimation(double target_width,
                                        double target_height,
                                        DWORD duration,
-                                       AnimationEasingType easing,
-                                       std::function<void()> on_complete) {
+                                       AnimationEasingType easing) {
   AnimationRequest request;
   request.property = AnimationPropertyType::kSize;
   request.target_width = target_width;
   request.target_height = target_height;
   request.duration = duration;
   request.easing = easing;
-  request.on_complete = on_complete;
   return StartAnimation(request);
 }
 
@@ -1293,8 +1265,7 @@ UINT_PTR WindowApi::StartBoundsAnimation(double target_x,
                                          double target_width,
                                          double target_height,
                                          DWORD duration,
-                                         AnimationEasingType easing,
-                                         std::function<void()> on_complete) {
+                                         AnimationEasingType easing) {
   AnimationRequest request;
   request.property = AnimationPropertyType::kBounds;
   request.target_x = target_x;
@@ -1303,20 +1274,17 @@ UINT_PTR WindowApi::StartBoundsAnimation(double target_x,
   request.target_height = target_height;
   request.duration = duration;
   request.easing = easing;
-  request.on_complete = on_complete;
   return StartAnimation(request);
 }
 
 UINT_PTR WindowApi::StartOpacityAnimation(double target_opacity,
                                           DWORD duration,
-                                          AnimationEasingType easing,
-                                          std::function<void()> on_complete) {
+                                          AnimationEasingType easing) {
   AnimationRequest request;
   request.property = AnimationPropertyType::kOpacity;
   request.target_opacity = target_opacity;
   request.duration = duration;
   request.easing = easing;
-  request.on_complete = on_complete;
   return StartAnimation(request);
 }
 

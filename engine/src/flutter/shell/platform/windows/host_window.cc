@@ -16,6 +16,7 @@
 #include "flutter/shell/platform/windows/rect_helper.h"
 #include "flutter/shell/platform/windows/wchar_util.h"
 #include "flutter/shell/platform/windows/window_manager.h"
+#include "window_api_timer.h"
 
 namespace {
 
@@ -293,7 +294,7 @@ void HostWindow::InitializeFlutterView(
 
   // Initialize the WindowApi instance.
   window_api_ = std::make_shared<WindowApi>(this);
-
+  WindowApiTimer::GetInstance().AddWindowApi(window_api_);
   // Adjust the window position so its origin aligns with the top-left corner
   // of the window frame, not the window rectangle (which includes the
   // drop-shadow). This adjustment must be done post-creation since the frame
@@ -333,6 +334,8 @@ HostWindow::~HostWindow() {
       SetLastError(ERROR_SUCCESS);
     }
   }
+  window_api_->OnShutdown();
+  WindowApiTimer::GetInstance().RemoveWindowApi(window_api_);
 }
 
 HostWindow* HostWindow::GetThisFromHandle(HWND hwnd) {

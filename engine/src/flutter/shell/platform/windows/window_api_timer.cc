@@ -71,26 +71,38 @@ void WindowApiTimer::Initialize(FlutterWindowsEngine* engine) {
   initialized_ = true;
 }
 
-void WindowApiTimer::AddWindow(HostWindow* window) {
-  if (!window) {
+void WindowApiTimer::AddWindowApi(std::shared_ptr<WindowApi> windowApi) {
+  if (!windowApi) {
     return;
   }
-  windows_.insert(window);
+  std::lock_guard<std::mutex> lock(windowApis_mutex_);
+  windowApis_.insert(windowApi);
+  windowApis_dirty_.store(true, std::memory_order_release);
 }
 
-void WindowApiTimer::RemoveWindow(HostWindow* window) {
-  if (!window) {
+void WindowApiTimer::RemoveWindowApi(std::shared_ptr<WindowApi> windowApi) {
+  if (!windowApi) {
     return;
   }
-  windows_.erase(window);
+  std::lock_guard<std::mutex> lock(windowApis_mutex_);
+  windowApis_.erase(windowApi);
+  windowApis_dirty_.store(true, std::memory_order_release);
 }
 
-bool WindowApiTimer::HasWindow(HostWindow* window) {
-  return windows_.find(window) != windows_.end();
+void WindowApiTimer::ClearWindows() {
+  std::lock_guard<std::mutex> lock(windowApis_mutex_);
+  windowApis_.clear();
+  windowApis_dirty_.store(true, std::memory_order_release);
+}
+
+bool WindowApiTimer::HasWindowApi(std::shared_ptr<WindowApi> windowApi) {
+  std::lock_guard<std::mutex> lock(windowApis_mutex_);
+  return windowApis_.find(windowApi) != windowApis_.end();
 }
 
 size_t WindowApiTimer::GetWindowCount() {
-  return windows_.size();
+  std::lock_guard<std::mutex> lock(windowApis_mutex_);
+  return windowApis_.size();
 }
 
 VOID CALLBACK WindowApiTimer::TimerCallback(PVOID lpParameter,
@@ -124,18 +136,27 @@ void WindowApiTimer::OnTick() {
     delta_ms = 16.0;  // Default to ~60 FPS.
   }
 
-  engine_->task_runner()->PostTask([this, delta_ms]() {
-    // Process animation tick for all registered windows.
-    // All operations run on main thread, no lock needed.
-    for (HostWindow* window : windows_) {
-      if (window) {
-        std::shared_ptr<WindowApi> api = window->GetApi();
-        if (api) {
-          api->OnAnimationTick(delta_ms);
-        }
+  // Rebuild cache only when window list has changed (dirty flag set).
+  if (windowApis_dirty_.load(std::memory_order_acquire)) {
+    std::lock_guard<std::mutex> lock(windowApis_mutex_);
+    // Double-check after acquiring lock.
+    if (windowApis_dirty_.load(std::memory_order_relaxed)) {
+      windowApis_cache_.clear();
+      windowApis_cache_.reserve(windowApis_.size());
+      for (const auto& window : windowApis_) {
+        windowApis_cache_.push_back(window);
       }
+      windowApis_dirty_.store(false, std::memory_order_release);
     }
-  });
+  }
+
+  // Tick each window using the cached copy.
+  // Note: Cache is safe to iterate without lock since only OnTick modifies it.
+  for (const auto& window : windowApis_cache_) {
+    if (window) {
+      window->OnAnimationTickOnThread(delta_ms);
+    }
+  }
 }
 
 }  // namespace flutter

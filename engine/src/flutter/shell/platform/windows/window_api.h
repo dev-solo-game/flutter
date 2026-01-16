@@ -8,8 +8,10 @@
 #include <shobjidl.h>
 #include <windows.h>
 #include <wrl/client.h>
+#include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -140,9 +142,6 @@ struct AnimationRequest {
   double spring_damping = 0.7;
   double spring_stiffness = 100.0;
 
-  // Completion callback
-  std::function<void()> on_complete = nullptr;
-
   // Helper static methods to create common animation requests
   static AnimationRequest Position(
       double x,
@@ -250,9 +249,6 @@ struct WindowAnimation {
   double spring_stiffness = 100.0;  // Spring stiffness
   double spring_velocity = 0.0;     // Initial velocity
 
-  // Callback when animation completes
-  std::function<void()> on_complete;
-
   // Whether the animation is active
   bool is_active = false;
 };
@@ -264,6 +260,7 @@ class WindowApi {
  public:
   explicit WindowApi(HostWindow* window);
   ~WindowApi();
+  void OnShutdown();
 
   // Sets the window bounds (position and size).
   void SetBounds(const WindowBoundsRequest* request);
@@ -359,16 +356,14 @@ class WindowApi {
       double target_x,
       double target_y,
       DWORD duration = 300,
-      AnimationEasingType easing = AnimationEasingType::kSpringBounce,
-      std::function<void()> on_complete = nullptr);
+      AnimationEasingType easing = AnimationEasingType::kSpringBounce);
 
   // Starts a size animation with spring bounce effect.
   UINT_PTR StartSizeAnimation(
       double target_width,
       double target_height,
       DWORD duration = 300,
-      AnimationEasingType easing = AnimationEasingType::kSpringBounce,
-      std::function<void()> on_complete = nullptr);
+      AnimationEasingType easing = AnimationEasingType::kSpringBounce);
 
   // Starts a bounds animation with spring bounce effect.
   UINT_PTR StartBoundsAnimation(
@@ -377,15 +372,13 @@ class WindowApi {
       double target_width,
       double target_height,
       DWORD duration = 300,
-      AnimationEasingType easing = AnimationEasingType::kSpringBounce,
-      std::function<void()> on_complete = nullptr);
+      AnimationEasingType easing = AnimationEasingType::kSpringBounce);
 
   // Starts an opacity animation.
   UINT_PTR StartOpacityAnimation(
       double target_opacity,
       DWORD duration = 300,
-      AnimationEasingType easing = AnimationEasingType::kEaseOut,
-      std::function<void()> on_complete = nullptr);
+      AnimationEasingType easing = AnimationEasingType::kEaseOut);
 
   // Stops an animation by animation ID.
   void StopAnimation(UINT_PTR animation_id);
@@ -402,6 +395,7 @@ class WindowApi {
   // Called internally to tick animations.
   // This method is called at ~60 FPS via unified WindowApiTimer.
   // @param delta_ms: Time elapsed since last tick (in milliseconds)
+  void OnAnimationTickOnThread(double delta_ms);
   void OnAnimationTick(double delta_ms);
 
  private:
@@ -414,6 +408,8 @@ class WindowApi {
 
   // The associated host window.
   HostWindow* window_;
+
+  std::atomic_bool is_shutdown_;
 
   // Drag state data.
   POINT drag_start_cursor_pos_ = {0, 0};
@@ -434,10 +430,6 @@ class WindowApi {
   uint64_t next_animation_id_ = 1;
   double spring_damping_ = 0.7;
   double spring_stiffness_ = 100.0;
-
-  // Unified timer management methods (delegates to WindowApiTimer).
-  void StartAnimationTimer();
-  void StopAnimationTimer();
 
   // Animation helper methods.
   double CalculateEasing(double t, AnimationEasingType easing);

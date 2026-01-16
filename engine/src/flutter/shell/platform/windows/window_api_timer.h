@@ -7,7 +7,10 @@
 
 #include <windows.h>
 #include <atomic>
+#include <mutex>
 #include <set>
+
+#include "window_api.h"
 
 namespace flutter {
 
@@ -28,14 +31,16 @@ class WindowApiTimer {
 
   // Adds a window to receive animation ticks.
   // The timer will start automatically if not already running.
-  void AddWindow(HostWindow* window);
+  void AddWindowApi(std::shared_ptr<WindowApi> windowApi);
 
   // Removes a window from receiving animation ticks.
   // The timer will stop automatically when no windows remain.
-  void RemoveWindow(HostWindow* window);
+  void RemoveWindowApi(std::shared_ptr<WindowApi> windowApi);
+
+  void ClearWindows();
 
   // Checks if a window is currently registered.
-  bool HasWindow(HostWindow* window);
+  bool HasWindowApi(std::shared_ptr<WindowApi> window);
 
   // Returns the number of registered windows.
   size_t GetWindowCount();
@@ -66,7 +71,16 @@ class WindowApiTimer {
   void OnTick();
 
   // Registered windows that need animation ticks.
-  std::set<HostWindow*> windows_;
+  std::set<std::shared_ptr<WindowApi>> windowApis_;
+
+  // Cached copy of windows for iteration (avoids allocation on each tick).
+  std::vector<std::shared_ptr<WindowApi>> windowApis_cache_;
+
+  // Flag indicating if windowApis_cache_ needs to be rebuilt.
+  std::atomic<bool> windowApis_dirty_{true};
+
+  // Mutex for protecting windowApis_ access from multiple threads.
+  mutable std::mutex windowApis_mutex_;
 
   // Timer queue handle (created once, kept alive).
   HANDLE timer_queue_ = nullptr;
