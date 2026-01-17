@@ -394,9 +394,11 @@ class WindowApi {
 
   // Called internally to tick animations.
   // This method is called at ~60 FPS via unified WindowApiTimer.
+  // Animation calculations are performed on the timer thread, and only
+  // the final SetWindowPos/SetLayeredWindowAttributes calls are posted
+  // to the main thread via task_runner.
   // @param delta_ms: Time elapsed since last tick (in milliseconds)
   void OnAnimationTickOnThread(double delta_ms);
-  void OnAnimationTick(double delta_ms);
 
  private:
   // Private helper method for setting background color on a specific HWND.
@@ -426,6 +428,8 @@ class WindowApi {
   Microsoft::WRL::ComPtr<ITaskbarList> task_bar_list_;
 
   // Animation storage and management.
+  mutable std::mutex
+      animation_mutex_;  // Protects active_animations_ and next_animation_id_
   std::unordered_map<uint64_t, WindowAnimation> active_animations_;
   uint64_t next_animation_id_ = 1;
   double spring_damping_ = 0.7;
@@ -434,7 +438,6 @@ class WindowApi {
   // Animation helper methods.
   double CalculateEasing(double t, AnimationEasingType easing);
   double CalculateSpringBounce(double t, double damping, double stiffness);
-  void ApplyAnimationFrame(WindowAnimation& anim, double eased_progress);
 
   // Stops animations that would conflict with the given property type.
   // Position conflicts with Bounds (both modify position).

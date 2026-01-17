@@ -61,6 +61,7 @@ WindowApi::WindowApi(HostWindow* window) : window_(window) {
 
 WindowApi::~WindowApi() {
   // Clear all animations when destroyed.
+  std::lock_guard<std::mutex> lock(animation_mutex_);
   active_animations_.clear();
 }
 
@@ -548,14 +549,6 @@ void WindowApi::SetIgnoreMouseEvents(bool ignore) {
 }
 
 void WindowApi::ShowWindowApi(int nCmd) {
-  if (nCmd == SW_SHOW || nCmd == SW_SHOWNOACTIVATE) {
-    FlutterWindowsEngine* engine = window_->GetEngine();
-    if (engine != nullptr) {
-      engine->SetNextFrameCallback(
-          [this, nCmd]() { ::ShowWindow(window_->GetWindowHandle(), nCmd); });
-      return;
-    }
-  }
   ::ShowWindow(window_->GetWindowHandle(), nCmd);
 }
 
@@ -771,22 +764,31 @@ void WindowApi::SetSpringParameters(double damping, double stiffness) {
 // Unified Timer Animation Implementation
 // ============================================================
 
+// Structure to hold computed animation frame data for posting to main thread
+struct AnimationFrameData {
+  HWND hwnd;
+  AnimationPropertyType property;
+  int physical_x;
+  int physical_y;
+  int physical_width;
+  int physical_height;
+  BYTE opacity;
+};
+
 void WindowApi::OnAnimationTickOnThread(double delta_ms) {
-  if (!is_shutdown_.load(std::memory_order_acquire) &&
-      !active_animations_.empty()) {
-    FlutterWindowsEngine* engine = window_->GetEngine();
-    if (engine != nullptr) {
-      engine->task_runner()->PostTask([this, delta_ms]() {
-        if (!is_shutdown_.load(std::memory_order_acquire)) {
-          OnAnimationTick(delta_ms);
-        }
-      });
-    }
+  if (is_shutdown_.load(std::memory_order_acquire)) {
+    return;
   }
-}
-void WindowApi::OnAnimationTick(double delta_ms) {
+
+  std::vector<uint64_t> completed_animations;
+  std::vector<AnimationFrameData> frames_to_apply;
+
   {
-    std::vector<uint64_t> completed_animations;
+    std::lock_guard<std::mutex> lock(animation_mutex_);
+
+    if (active_animations_.empty()) {
+      return;
+    }
 
     for (auto& pair : active_animations_) {
       WindowAnimation& anim = pair.second;
@@ -797,123 +799,147 @@ void WindowApi::OnAnimationTick(double delta_ms) {
       // Accumulate elapsed time.
       anim.elapsed_ms += delta_ms;
 
+      double eased_progress;
       if (anim.elapsed_ms >= static_cast<double>(anim.duration)) {
         // Animation complete
         anim.progress = 1.0;
-        ApplyAnimationFrame(anim, 1.0);
+        eased_progress = 1.0;
         completed_animations.push_back(pair.first);
       } else {
         // Calculate progress
         anim.progress = anim.elapsed_ms / static_cast<double>(anim.duration);
-
-        // Apply easing
-        double eased_progress = CalculateEasing(anim.progress, anim.easing);
-
-        // Apply the animation frame
-        ApplyAnimationFrame(anim, eased_progress);
+        eased_progress = CalculateEasing(anim.progress, anim.easing);
       }
+
+      // Compute animation frame data (on timer thread)
+      AnimationFrameData frame_data;
+      frame_data.hwnd = anim.hwnd;
+      frame_data.property = anim.property;
+
+      const double scale_factor = anim.scale_factor;
+
+      switch (anim.property) {
+        case AnimationPropertyType::kPosition: {
+          double current_x =
+              anim.start_x + (anim.target_x - anim.start_x) * eased_progress;
+          double current_y =
+              anim.start_y + (anim.target_y - anim.start_y) * eased_progress;
+
+          frame_data.physical_x = static_cast<int>(current_x * scale_factor) -
+                                  static_cast<int>(anim.shadow_left);
+          frame_data.physical_y = static_cast<int>(current_y * scale_factor) -
+                                  static_cast<int>(anim.shadow_top);
+          frame_data.physical_width = 0;
+          frame_data.physical_height = 0;
+          break;
+        }
+
+        case AnimationPropertyType::kSize: {
+          double current_width =
+              anim.start_width +
+              (anim.target_width - anim.start_width) * eased_progress;
+          double current_height =
+              anim.start_height +
+              (anim.target_height - anim.start_height) * eased_progress;
+
+          frame_data.physical_x = 0;
+          frame_data.physical_y = 0;
+          frame_data.physical_width =
+              static_cast<int>(current_width * scale_factor) +
+              static_cast<int>(anim.shadow_left + anim.shadow_right);
+          frame_data.physical_height =
+              static_cast<int>(current_height * scale_factor) +
+              static_cast<int>(anim.shadow_top + anim.shadow_bottom);
+          break;
+        }
+
+        case AnimationPropertyType::kBounds: {
+          double current_x =
+              anim.start_x + (anim.target_x - anim.start_x) * eased_progress;
+          double current_y =
+              anim.start_y + (anim.target_y - anim.start_y) * eased_progress;
+          double current_width =
+              anim.start_width +
+              (anim.target_width - anim.start_width) * eased_progress;
+          double current_height =
+              anim.start_height +
+              (anim.target_height - anim.start_height) * eased_progress;
+
+          frame_data.physical_x = static_cast<int>(current_x * scale_factor) -
+                                  static_cast<int>(anim.shadow_left);
+          frame_data.physical_y = static_cast<int>(current_y * scale_factor) -
+                                  static_cast<int>(anim.shadow_top);
+          frame_data.physical_width =
+              static_cast<int>(current_width * scale_factor) +
+              static_cast<int>(anim.shadow_left + anim.shadow_right);
+          frame_data.physical_height =
+              static_cast<int>(current_height * scale_factor) +
+              static_cast<int>(anim.shadow_top + anim.shadow_bottom);
+          break;
+        }
+
+        case AnimationPropertyType::kOpacity: {
+          double current_opacity =
+              anim.start_opacity +
+              (anim.target_opacity - anim.start_opacity) * eased_progress;
+          frame_data.opacity = static_cast<BYTE>(
+              (std::max)(0.0, (std::min)(1.0, current_opacity)) * 255);
+          break;
+        }
+      }
+
+      frames_to_apply.push_back(frame_data);
     }
 
-    // Remove completed animations
+    // Remove completed animations (while still holding lock)
     for (uint64_t id : completed_animations) {
       active_animations_.erase(id);
     }
-  }
-}
+  }  // Release animation_mutex_ before PostTask to avoid potential deadlock
 
-void WindowApi::ApplyAnimationFrame(WindowAnimation& anim,
-                                    double eased_progress) {
-  if (!anim.hwnd) {
-    return;
-  }
+  // Only post task if there are frames to apply
+  if (!frames_to_apply.empty()) {
+    FlutterWindowsEngine* engine = window_->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [this, frames = std::move(frames_to_apply)]() {
+            if (is_shutdown_.load(std::memory_order_acquire)) {
+              return;
+            }
+            // Apply all animation frames on the main thread
+            for (const auto& frame : frames) {
+              switch (frame.property) {
+                case AnimationPropertyType::kPosition:
+                  SetWindowPos(frame.hwnd, nullptr, frame.physical_x,
+                               frame.physical_y, 0, 0,
+                               SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                  break;
 
-  // Use cached scale_factor and shadow offsets (computed at animation start)
-  const double scale_factor = anim.scale_factor;
+                case AnimationPropertyType::kSize:
+                  SetWindowPos(frame.hwnd, nullptr, 0, 0, frame.physical_width,
+                               frame.physical_height,
+                               SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+                  break;
 
-  switch (anim.property) {
-    case AnimationPropertyType::kPosition: {
-      double current_x =
-          anim.start_x + (anim.target_x - anim.start_x) * eased_progress;
-      double current_y =
-          anim.start_y + (anim.target_y - anim.start_y) * eased_progress;
+                case AnimationPropertyType::kBounds:
+                  SetWindowPos(frame.hwnd, nullptr, frame.physical_x,
+                               frame.physical_y, frame.physical_width,
+                               frame.physical_height,
+                               SWP_NOZORDER | SWP_NOACTIVATE);
+                  break;
 
-      int physical_x = static_cast<int>(current_x * scale_factor);
-      int physical_y = static_cast<int>(current_y * scale_factor);
-
-      // Apply cached shadow offset
-      physical_x -= static_cast<int>(anim.shadow_left);
-      physical_y -= static_cast<int>(anim.shadow_top);
-
-      SetWindowPos(
-          anim.hwnd, nullptr, physical_x, physical_y, 0, 0,
-          SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
-      break;
-    }
-
-    case AnimationPropertyType::kSize: {
-      double current_width =
-          anim.start_width +
-          (anim.target_width - anim.start_width) * eased_progress;
-      double current_height =
-          anim.start_height +
-          (anim.target_height - anim.start_height) * eased_progress;
-
-      int physical_width = static_cast<int>(current_width * scale_factor);
-      int physical_height = static_cast<int>(current_height * scale_factor);
-
-      // Apply cached shadow offset
-      physical_width += static_cast<int>(anim.shadow_left + anim.shadow_right);
-      physical_height += static_cast<int>(anim.shadow_top + anim.shadow_bottom);
-
-      SetWindowPos(anim.hwnd, nullptr, 0, 0, physical_width, physical_height,
-                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-      break;
-    }
-
-    case AnimationPropertyType::kBounds: {
-      double current_x =
-          anim.start_x + (anim.target_x - anim.start_x) * eased_progress;
-      double current_y =
-          anim.start_y + (anim.target_y - anim.start_y) * eased_progress;
-      double current_width =
-          anim.start_width +
-          (anim.target_width - anim.start_width) * eased_progress;
-      double current_height =
-          anim.start_height +
-          (anim.target_height - anim.start_height) * eased_progress;
-
-      int physical_x = static_cast<int>(current_x * scale_factor);
-      int physical_y = static_cast<int>(current_y * scale_factor);
-      int physical_width = static_cast<int>(current_width * scale_factor);
-      int physical_height = static_cast<int>(current_height * scale_factor);
-
-      // Apply cached shadow offset
-      physical_x -= static_cast<int>(anim.shadow_left);
-      physical_y -= static_cast<int>(anim.shadow_top);
-      physical_width += static_cast<int>(anim.shadow_left + anim.shadow_right);
-      physical_height += static_cast<int>(anim.shadow_top + anim.shadow_bottom);
-
-      SetWindowPos(anim.hwnd, nullptr, physical_x, physical_y, physical_width,
-                   physical_height, SWP_NOZORDER | SWP_NOACTIVATE);
-      break;
-    }
-
-    case AnimationPropertyType::kOpacity: {
-      double current_opacity =
-          anim.start_opacity +
-          (anim.target_opacity - anim.start_opacity) * eased_progress;
-
-      // Only set WS_EX_LAYERED once (at animation start, opacity is already
-      // set)
-      SetLayeredWindowAttributes(
-          anim.hwnd, 0,
-          static_cast<BYTE>((std::max)(0.0, (std::min)(1.0, current_opacity)) *
-                            255),
-          LWA_ALPHA);
-      break;
+                case AnimationPropertyType::kOpacity:
+                  SetLayeredWindowAttributes(frame.hwnd, 0, frame.opacity,
+                                             LWA_ALPHA);
+                  break;
+              }
+            }
+          });
     }
   }
 }
+
+// ApplyAnimationFrame has been inlined into OnAnimationTickOnThread
 
 bool WindowApi::OnTimer(WPARAM wParam, LPARAM lParam) {
   // Animation is now handled by dedicated thread, not WM_TIMER
@@ -924,6 +950,7 @@ bool WindowApi::OnTimer(WPARAM wParam, LPARAM lParam) {
 
 void WindowApi::StopConflictingAnimations(AnimationPropertyType new_property) {
   // Stop animations that conflict with the new property type.
+  // Note: Caller must hold animation_mutex_.
   std::vector<uint64_t> to_stop;
 
   for (const auto& pair : active_animations_) {
@@ -1211,6 +1238,8 @@ UINT_PTR WindowApi::StartAnimation(const AnimationRequest& request) {
   uint64_t animation_id;
 
   {
+    std::lock_guard<std::mutex> lock(animation_mutex_);
+
     // Stop any conflicting animations before starting new one
     StopConflictingAnimations(request.property);
 
@@ -1281,6 +1310,7 @@ UINT_PTR WindowApi::StartOpacityAnimation(double target_opacity,
 }
 
 void WindowApi::StopAnimation(UINT_PTR animation_id) {
+  std::lock_guard<std::mutex> lock(animation_mutex_);
   auto it = active_animations_.find(animation_id);
   if (it != active_animations_.end()) {
     it->second.is_active = false;
@@ -1288,12 +1318,14 @@ void WindowApi::StopAnimation(UINT_PTR animation_id) {
 }
 
 void WindowApi::StopAllAnimations() {
+  std::lock_guard<std::mutex> lock(animation_mutex_);
   for (auto& pair : active_animations_) {
     pair.second.is_active = false;
   }
 }
 
 bool WindowApi::HasActiveAnimation() {
+  std::lock_guard<std::mutex> lock(animation_mutex_);
   for (const auto& pair : active_animations_) {
     if (pair.second.is_active) {
       return true;
@@ -1349,6 +1381,12 @@ extern "C" {
 void InternalFlutterWindows_WindowApi_DragWindow(HWND hwnd, int32_t state) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window, state]() { window->GetApi()->DragWindow(state); });
+      return;
+    }
     window->GetApi()->DragWindow(state);
   }
 }
@@ -1357,7 +1395,16 @@ void InternalFlutterWindows_WindowApi_SetBounds(
     HWND hwnd,
     const flutter::WindowBoundsRequest* request) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
-  if (window) {
+  if (window && request) {
+    // Copy request to avoid dangling pointer in async task
+    flutter::WindowBoundsRequest request_copy = *request;
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask([window, request_copy]() {
+        window->GetApi()->SetBounds(&request_copy);
+      });
+      return;
+    }
     window->GetApi()->SetBounds(request);
   }
 }
@@ -1383,6 +1430,12 @@ flutter::ActualWindowBounds InternalFlutterWindows_WindowApi_GetWindowBounds(
 void InternalFlutterWindows_WindowApi_FocusWindow(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window]() { window->GetApi()->FocusWindow(); });
+      return;
+    }
     window->GetApi()->FocusWindow();
   }
 }
@@ -1390,6 +1443,12 @@ void InternalFlutterWindows_WindowApi_FocusWindow(HWND hwnd) {
 void InternalFlutterWindows_WindowApi_SetNoFrame(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window]() { window->GetApi()->SetNoFrame(); });
+      return;
+    }
     window->GetApi()->SetNoFrame();
   }
 }
@@ -1406,6 +1465,13 @@ void InternalFlutterWindows_WindowApi_SetAlwaysOnTop(HWND hwnd,
                                                      bool is_always_on_top) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask([window, is_always_on_top]() {
+        window->GetApi()->SetAlwaysOnTop(is_always_on_top);
+      });
+      return;
+    }
     window->GetApi()->SetAlwaysOnTop(is_always_on_top);
   }
 }
@@ -1422,6 +1488,13 @@ void InternalFlutterWindows_WindowApi_SetResizable(HWND hwnd,
                                                    bool is_resizable) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask([window, is_resizable]() {
+        window->GetApi()->SetResizable(is_resizable);
+      });
+      return;
+    }
     window->GetApi()->SetResizable(is_resizable);
   }
 }
@@ -1437,6 +1510,12 @@ bool InternalFlutterWindows_WindowApi_IsMinimized(HWND hwnd) {
 void InternalFlutterWindows_WindowApi_Restore(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window]() { window->GetApi()->Restore(); });
+      return;
+    }
     window->GetApi()->Restore();
   }
 }
@@ -1453,6 +1532,13 @@ void InternalFlutterWindows_WindowApi_SetSkipTaskbar(HWND hwnd,
                                                      bool is_skip_taskbar) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask([window, is_skip_taskbar]() {
+        window->GetApi()->SetSkipTaskbar(is_skip_taskbar);
+      });
+      return;
+    }
     window->GetApi()->SetSkipTaskbar(is_skip_taskbar);
   }
 }
@@ -1460,6 +1546,12 @@ void InternalFlutterWindows_WindowApi_SetSkipTaskbar(HWND hwnd,
 void InternalFlutterWindows_WindowApi_CenterWindowOnMonitor(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window]() { window->GetApi()->CenterWindowOnMonitor(); });
+      return;
+    }
     window->GetApi()->CenterWindowOnMonitor();
   }
 }
@@ -1467,6 +1559,12 @@ void InternalFlutterWindows_WindowApi_CenterWindowOnMonitor(HWND hwnd) {
 void InternalFlutterWindows_WindowApi_ShowWindow(HWND hwnd, int nCmd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window, nCmd]() { window->GetApi()->ShowWindowApi(nCmd); });
+      return;
+    }
     window->GetApi()->ShowWindowApi(nCmd);
   }
 }
@@ -1474,6 +1572,12 @@ void InternalFlutterWindows_WindowApi_ShowWindow(HWND hwnd, int nCmd) {
 void InternalFlutterWindows_WindowApi_SetNoSystemMenu(HWND hwnd) {
   flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
   if (window) {
+    flutter::FlutterWindowsEngine* engine = window->GetEngine();
+    if (engine != nullptr) {
+      engine->task_runner()->PostTask(
+          [window]() { window->GetApi()->SetNoSystemMenu(); });
+      return;
+    }
     window->GetApi()->SetNoSystemMenu();
   }
 }
@@ -1575,16 +1679,35 @@ uint64_t InternalFlutterWindows_WindowApi_StartOpacityAnimation(
 
 void InternalFlutterWindows_WindowApi_StopAnimation(HWND hwnd,
                                                     uint64_t timer_id) {
-  auto api = GetWindowApiFromHwnd(hwnd);
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (!window) {
+    return;
+  }
+  auto api = window->GetApi();
   if (!api) {
+    return;
+  }
+  flutter::FlutterWindowsEngine* engine = window->GetEngine();
+  if (engine != nullptr) {
+    engine->task_runner()->PostTask(
+        [api, timer_id]() { api->StopAnimation(timer_id); });
     return;
   }
   api->StopAnimation(timer_id);
 }
 
 void InternalFlutterWindows_WindowApi_StopAllAnimations(HWND hwnd) {
-  auto api = GetWindowApiFromHwnd(hwnd);
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (!window) {
+    return;
+  }
+  auto api = window->GetApi();
   if (!api) {
+    return;
+  }
+  flutter::FlutterWindowsEngine* engine = window->GetEngine();
+  if (engine != nullptr) {
+    engine->task_runner()->PostTask([api]() { api->StopAllAnimations(); });
     return;
   }
   api->StopAllAnimations();
@@ -1601,8 +1724,19 @@ bool InternalFlutterWindows_WindowApi_HasActiveAnimation(HWND hwnd) {
 void InternalFlutterWindows_WindowApi_SetSpringParameters(HWND hwnd,
                                                           double damping,
                                                           double stiffness) {
-  auto api = GetWindowApiFromHwnd(hwnd);
+  flutter::HostWindow* window = flutter::HostWindow::GetThisFromHandle(hwnd);
+  if (!window) {
+    return;
+  }
+  auto api = window->GetApi();
   if (!api) {
+    return;
+  }
+  flutter::FlutterWindowsEngine* engine = window->GetEngine();
+  if (engine != nullptr) {
+    engine->task_runner()->PostTask([api, damping, stiffness]() {
+      api->SetSpringParameters(damping, stiffness);
+    });
     return;
   }
   api->SetSpringParameters(damping, stiffness);
