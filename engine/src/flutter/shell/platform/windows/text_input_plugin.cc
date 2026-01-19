@@ -219,10 +219,13 @@ void TextInputPlugin::HandleMethodCall(
   } else if (method.compare(kClearClientMethod) == 0) {
     FlutterWindowsView* view = engine_->view(view_id_);
     if (view == nullptr) {
-      std::stringstream ss;
-      ss << "Text input is not available because view with view_id=" << view_id_
-         << " cannot be found";
-      result->Error(kInternalConsistencyError, ss.str());
+      // TODO disable error with multi window support
+      //  std::stringstream ss;
+      //  ss << "Text input is not available because view with view_id=" <<
+      //  view_id_
+      //     << " cannot be found";
+      //  result->Error(kInternalConsistencyError, ss.str());
+      result->Success();
       return;
     }
     if (active_model_ != nullptr && active_model_->composing()) {
