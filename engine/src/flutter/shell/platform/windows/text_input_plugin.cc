@@ -343,10 +343,12 @@ void TextInputPlugin::HandleMethodCall(
   } else if (method.compare(kSetMarkedTextRect) == 0) {
     FlutterWindowsView* view = engine_->view(view_id_);
     if (view == nullptr) {
-      std::stringstream ss;
-      ss << "Text input is not available because view with view_id=" << view_id_
-         << " cannot be found";
-      result->Error(kInternalConsistencyError, ss.str());
+      // std::stringstream ss;
+      // ss << "Text input is not available because view with view_id=" <<
+      // view_id_
+      //    << " cannot be found";
+      // result->Error(kInternalConsistencyError, ss.str());
+      result->Success();
       return;
     }
     if (!method_call.arguments() || method_call.arguments()->IsNull()) {
@@ -374,10 +376,12 @@ void TextInputPlugin::HandleMethodCall(
   } else if (method.compare(kSetEditableSizeAndTransform) == 0) {
     FlutterWindowsView* view = engine_->view(view_id_);
     if (view == nullptr) {
-      std::stringstream ss;
-      ss << "Text input is not available because view with view_id=" << view_id_
-         << " cannot be found";
-      result->Error(kInternalConsistencyError, ss.str());
+      // std::stringstream ss;
+      // ss << "Text input is not available because view with view_id=" <<
+      // view_id_
+      //    << " cannot be found";
+      // result->Error(kInternalConsistencyError, ss.str());
+      result->Success();
       return;
     }
     if (!method_call.arguments() || method_call.arguments()->IsNull()) {
