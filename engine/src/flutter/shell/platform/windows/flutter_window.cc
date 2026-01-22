@@ -136,15 +136,15 @@ PhysicalWindowBounds FlutterWindow::GetPhysicalWindowBounds() {
 }
 
 bool FlutterWindow::Focus() {
-  auto hwnd = GetWindowHandle();
-  if (hwnd == nullptr) {
-    return false;
-  }
-
-  HWND prevFocus = ::SetFocus(hwnd);
-  if (prevFocus == nullptr) {
-    return false;
-  }
+  // auto hwnd = GetWindowHandle();
+  // if (hwnd == nullptr) {
+  //   return false;
+  // }
+  //
+  // HWND prevFocus = ::SetFocus(hwnd);
+  // if (prevFocus == nullptr) {
+  //   return false;
+  // }
 
   return true;
 }
