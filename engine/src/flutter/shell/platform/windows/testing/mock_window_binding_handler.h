@@ -25,6 +25,8 @@ class MockWindowBindingHandler : public WindowBindingHandler {
   MOCK_METHOD(PhysicalWindowBounds, GetPhysicalWindowBounds, (), (override));
   MOCK_METHOD(void, OnCursorRectUpdated, (const Rect& rect), (override));
   MOCK_METHOD(void, OnResetImeComposing, (), (override));
+  MOCK_METHOD(void, OpenIme, (), (override));
+  MOCK_METHOD(void, CloseIme, (), (override));
   MOCK_METHOD(bool, OnBitmapSurfaceCleared, (), (override));
   MOCK_METHOD(bool,
               OnBitmapSurfaceUpdated,

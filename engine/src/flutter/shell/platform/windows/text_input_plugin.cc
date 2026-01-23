@@ -235,6 +235,7 @@ void TextInputPlugin::HandleMethodCall(
     }
     view->OnResetImeComposing();
     active_model_ = nullptr;
+    view->CloseIme();
   } else if (method.compare(kSetClientMethod) == 0) {
     if (!method_call.arguments() || method_call.arguments()->IsNull()) {
       result->Error(kBadArgumentError, "Method invoked without args");
@@ -285,7 +286,24 @@ void TextInputPlugin::HandleMethodCall(
         input_type_ = input_type_json->value.GetString();
       }
     }
+    bool is_obscure_text = false;
+    auto input_obscure_text_json = client_config.FindMember("obscureText");
+    if (input_obscure_text_json != client_config.MemberEnd() &&
+        input_obscure_text_json->value.IsBool()) {
+      is_obscure_text = input_obscure_text_json->value.GetBool();
+    }
     active_model_ = std::make_unique<TextInputModel>();
+    FlutterWindowsView* view = engine_->view(view_id_);
+    if (view) {
+      if (is_obscure_text || input_type_.compare("number") == 0 ||
+          input_type_.compare("datetime") == 0 ||
+          input_type_.compare("phone") == 0 ||
+          input_type_.compare("url") == 0 || input_type_.compare("") == 0) {
+        view->CloseIme();
+      } else {
+        view->OpenIme();
+      }
+    }
   } else if (method.compare(kSetEditingStateMethod) == 0) {
     if (!method_call.arguments() || method_call.arguments()->IsNull()) {
       result->Error(kBadArgumentError, "Method invoked without args");

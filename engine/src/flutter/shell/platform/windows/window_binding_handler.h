@@ -75,6 +75,12 @@ class WindowBindingHandler {
   // client is cleared.
   virtual void OnResetImeComposing() = 0;
 
+  // Opens the IME window for text input.
+  virtual void OpenIme() = 0;
+
+  // Closes the IME window.
+  virtual void CloseIme() = 0;
+
   // Returns the last known position of the primary pointer in window
   // coordinates.
   virtual PointerLocation GetPrimaryPointerLocation() = 0;

@@ -172,6 +172,14 @@ class FlutterWindow : public KeyboardManager::WindowDelegate,
   // |FlutterWindowBindingHandler|
   virtual PointerLocation GetPrimaryPointerLocation() override;
 
+  // |WindowBindingHandler|
+  virtual void OpenIme() override;
+
+  HIMC _saveHIMC = nullptr;
+
+  // |WindowBindingHandler|
+  virtual void CloseIme() override;
+
   // [FlutterWindowBindingHandler]
   virtual FlutterEngineDisplayId GetDisplayId() override;
 

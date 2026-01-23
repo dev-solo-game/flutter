@@ -385,6 +385,14 @@ void FlutterWindowsView::OnResetImeComposing() {
   binding_handler_->OnResetImeComposing();
 }
 
+void FlutterWindowsView::OpenIme() {
+  binding_handler_->OpenIme();
+}
+
+void FlutterWindowsView::CloseIme() {
+  binding_handler_->CloseIme();
+}
+
 // Sends new size information to FlutterEngine.
 void FlutterWindowsView::SendWindowMetrics(size_t width,
                                            size_t height,

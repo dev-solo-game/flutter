@@ -239,6 +239,12 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate {
   // Notifies the delegate that the system IME composing state should be reset.
   virtual void OnResetImeComposing();
 
+  // Opens the IME window for text input.
+  void OpenIme();
+
+  // Closes the IME window.
+  void CloseIme();
+
   // Called when a WM_ONCOMPOSITIONCHANGED message is received.
   void OnDwmCompositionChanged();
 

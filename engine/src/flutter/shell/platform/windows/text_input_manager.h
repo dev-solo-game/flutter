@@ -93,6 +93,9 @@ class TextInputManager {
   // The window with which the IME windows are associated.
   HWND window_handle_ = nullptr;
 
+  // Saved IME context when IME is disabled.
+  HIMC saved_ime_context_ = nullptr;
+
   // True if IME-based composing is active.
   bool ime_active_ = false;
 

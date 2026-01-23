@@ -85,6 +85,9 @@ class MockWindow : public FlutterWindow {
               (),
               (override));
 
+  MOCK_METHOD(void, OpenIme, (), (override));
+  MOCK_METHOD(void, CloseIme, (), (override));
+
   MOCK_METHOD(LRESULT, OnGetObject, (UINT, WPARAM, LPARAM), (override));
 
   MOCK_METHOD(void, OnWindowStateEvent, (WindowStateEvent), (override));

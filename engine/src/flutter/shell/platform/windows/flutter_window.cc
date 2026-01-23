@@ -268,6 +268,14 @@ void FlutterWindow::OnResetImeComposing() {
   AbortImeComposing();
 }
 
+void FlutterWindow::OpenIme() {
+  text_input_manager_->CreateImeWindow();
+}
+
+void FlutterWindow::CloseIme() {
+  text_input_manager_->DestroyImeWindow();
+}
+
 bool FlutterWindow::OnBitmapSurfaceCleared() {
   HDC dc = ::GetDC(GetWindowHandle());
   bool result = ::PatBlt(dc, 0, 0, current_width_, current_height_, BLACKNESS);
@@ -822,14 +830,14 @@ void FlutterWindow::OnImeSetContext(UINT const message,
                                     WPARAM const wparam,
                                     LPARAM const lparam) {
   if (wparam != 0) {
-    text_input_manager_->CreateImeWindow();
+    // text_input_manager_->CreateImeWindow();
   }
 }
 
 void FlutterWindow::OnImeStartComposition(UINT const message,
                                           WPARAM const wparam,
                                           LPARAM const lparam) {
-  text_input_manager_->CreateImeWindow();
+  // text_input_manager_->CreateImeWindow();
   OnComposeBegin();
 }
 
@@ -871,7 +879,7 @@ void FlutterWindow::OnImeComposition(UINT const message,
 void FlutterWindow::OnImeEndComposition(UINT const message,
                                         WPARAM const wparam,
                                         LPARAM const lparam) {
-  text_input_manager_->DestroyImeWindow();
+  // text_input_manager_->DestroyImeWindow();
   OnComposeEnd();
 }
 

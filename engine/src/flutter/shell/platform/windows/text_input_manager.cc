@@ -53,6 +53,12 @@ void TextInputManager::CreateImeWindow() {
     return;
   }
 
+  // Restore IME context if it was previously disabled
+  if (saved_ime_context_ != nullptr) {
+    ::ImmAssociateContext(window_handle_, saved_ime_context_);
+    saved_ime_context_ = nullptr;
+  }
+
   // Some IMEs ignore calls to ::ImmSetCandidateWindow() and use the position of
   // the current system caret instead via ::GetCaretPos(). In order to behave
   // as expected with these IMEs, we create a temporary system caret.
@@ -68,6 +74,13 @@ void TextInputManager::CreateImeWindow() {
 void TextInputManager::DestroyImeWindow() {
   if (window_handle_ == nullptr) {
     return;
+  }
+
+  // Save current IME context and disassociate it from the window
+  // This completely disables IME input for this window
+  if (saved_ime_context_ == nullptr) {
+    saved_ime_context_ = ::ImmGetContext(window_handle_);
+    ::ImmAssociateContext(window_handle_, NULL);
   }
 
   // Destroy the system caret created in CreateImeWindow().
