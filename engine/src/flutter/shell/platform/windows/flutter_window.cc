@@ -104,6 +104,8 @@ FlutterWindow::FlutterWindow(
   keyboard_manager_ = std::make_unique<KeyboardManager>(this);
 
   InitializeChild("FLUTTERVIEW", width, height);
+  
+  CloseIme();
 }
 
 // Base constructor for mocks
